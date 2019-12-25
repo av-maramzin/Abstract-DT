@@ -1,103 +1,109 @@
 #ifndef FRACTAL_H
 #define FRACTAL_H
 
+#include <cmath>
+
+#include <iostream>
+
+#include "Sequence.h"
+
 namespace abstract {
+
+template <typename ElemType, typename GrowthFunc>
+class FractalElement;
+
+class FractalElementInfo {
+    
+    public:
+
+        FractalElementInfo(int elem_depth=-1, int elem_label=-1, int elem_children_num=-1)
+            : depth(elem_depth), label(elem_label), children_num(elem_children_num) {}
+
+        int depth;
+        int label;
+        int children_num;
+};
 
 template <typename ElemType, typename GrowthFunc>
 class Fractal {
 
-    public:    
+    public:
         
-        using Fractal_t = Fractal<ElemType,GrowthFunc>;
+        using fractal_t = Fractal<ElemType,GrowthFunc>;
 
-        Fractal(int scaling_factor=-1) 
-            : parent(nullptr), elem(nullptr), scaling_factor(scaling_factor), depth(0)
+        Fractal(GrowthFunc fractal_growth_func, int scaling_factor=-1) 
+            : root(nullptr), scaling_factor(scaling_factor), growth_func(fractal_growth_func)
         {
-            children.clear();
+            children_num = std::pow(2,scaling_factor);
         }
         
-        virtual ~Fractal() {
-            
-            parent = nullptr;
-            
-            if (elem != nullptr) {
-                delete elem;
-            }
-
-            for (auto child_fractal_ptr : children) {
-                delete child_fractal_ptr;
-            }
-
-            children.clear();
+        ~Fractal() {
+            delete root;
         }
 
-        virtual Fractal_t* grow(unsigned int depth, unsigned int label_seed, Fractal_t* parent_fractal);
+        void grow(int depth, int label_seed);
         
-        template <typename ApplyFunc>
-        virtual void apply(ApplyFunc apply_func);
+        template <typename ApplyFunc,typename ReturnType>
+        ReturnType apply(ApplyFunc apply_func);
 
     private:
 
-        ElemType* allocate_element();
+        FractalElement<ElemType,GrowthFunc>* root; 
 
-        unsigned int scaling_factor;
+        GrowthFunc growth_func;
 
-        std::size_t depth_level;
-        label_t label;
-        std::size_t children_num;
+        int scaling_factor;
+        int children_num;
 
-        ElemType* elem;
-        Sequence<Fractal_t*> children;
-        Fractal_t* parent;
+        int depth;
+        int label_seed;
 };
 
 template <typename ElemType, typename GrowthFunc>
-Fractal_t* Fractal<ElemType,GrowthFunc>::grow(unsigned int depth, unsigned int label_seed, Fractal_t* parent_fractal) {
+class FractalElement {
 
-    std::size_t children_num = std::pow(2,scaling_factor);
-    std::size_t i;
+    public:
 
-    parent = parent_fractal;
+        using Fractal_t = Fractal<ElemType,GrowthFunc>;
+        using FractalElement_t = FractalElement<ElemType,GrowthFunc>;
 
-    if (depth == 0) {
-        return nullptr;
-    } else {
-        elem = allocate_element();
+        FractalElement(const FractalElementInfo& elem_info,
+                       int fractal_depth = -1,
+                       Fractal_t* fractal = nullptr,
+                       FractalElement_t* elem_parent = nullptr,
+                       GrowthFunc growth_func = nullptr);
+
+        ~FractalElement();
+
+        template <typename ApplyFunc,typename ReturnType>
+        ReturnType apply(ApplyFunc apply_func);
+
+    private:
         
-        GrowthFunc(elem, depth, label_seed);
-        
-        for (i = 0; i < children_num; i++) {
-            Fractal_t* child_fractal = grow(depth-1, label_seed*children_num+i-1, this);
-            if (child_fractal != nullptr) {
-                children.add(child_fractal);
-            }
+        ElemType* allocate_element() {
+            return new ElemType;   
         }
-    }
 
-    return this;
-}
+    private:
 
-template <typename ElemType, typename GrowthFunc>
-template <typename ApplyFunc, typename ReturnType>
-ReturnType Fractal<ElemType, GrowthFunc>::apply(ApplyFunc apply_func) {
+        // fractal the element belongs to
+        Fractal_t* fractal;
         
-    if (elem == nullptr) {
-        std::cerr << "Fractal::apply(): error: cannot apply the specified function to the NULL fractal element";
-        std::exit(EXIT_FAILURE);
-    }
-    
-    std::vector<ReturnType> ret_vals;
+        // functin to grow the fractal element
+        GrowthFunc growth_func;
 
-    if (!children.empty()) {
-        constexpr std::size_t children_num = std::pow(2,scaling_factor);
-        std::vector<ReturnType> ret_vals;
-        for (std::size_t i = 0; i < children_num; i++) {
-            ret_vals.push_back(children[i].apply(apply_func));
-        }
-    }
-        
-    return apply_func(elem, ret_vals);
-}
+        // structural links with parent and children fractal elements
+        FractalElement_t* parent;
+        Sequence<FractalElement_t*> children;
+
+        // element information
+        FractalElementInfo info;
+
+        // satellite fractal element data
+        ElemType* elem;
+};
+
+#include "Fractal.tpp"
 
 } // namespace abstract
 

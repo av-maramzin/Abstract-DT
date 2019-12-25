@@ -23,8 +23,12 @@ class Sequence : public Collection<ElemType> {
         Sequence& operator=(const Sequence& seq);
         Sequence& operator=(Sequence&& seq);
 
+        ElemType& operator[](const int i) { return _vec[i]; }
+        
         // primitive operations
         std::size_t size() const { return _vec.size(); }
+
+        bool empty() const { return _vec.empty(); }
 
         void add(ElemType elem);
         ElemType& at(std::size_t i);
