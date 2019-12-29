@@ -2,20 +2,22 @@
 //
 
 template <typename ElemType, typename GrowthFunc>
-void Fractal<ElemType,GrowthFunc>::grow(int depth, int label_seed)
+void Fractal<ElemType,GrowthFunc>::grow(int top_level, int label_seed)
 {
-    this->depth = depth;
+    this->top_level = top_level;
+    this->depth = top_level-1;
     this->label_seed = label_seed;
    
     FractalElementInfo info;
 
-    info.depth = this->depth;
+    info.level = top_level;
+    info.depth = 0;
     info.label = this->label_seed;
     info.children_num = this->children_num;
 
-    if (depth >= 0) {
+    if (this->depth >= 0) {
         root = new FractalElement<ElemType,GrowthFunc>(info, // current fractal element info
-                                                       depth, // fractal depth
+                                                       this->depth, // fractal depth
                                                        this, // fractal the element belongs to
                                                        nullptr, // parent fractal element (root does not have a parent pointer)
                                                        growth_func); // function to grow elements
@@ -43,26 +45,55 @@ FractalElement<ElemType,GrowthFunc>::FractalElement(const FractalElementInfo& el
     : info(elem_info), fractal(fractal), parent(elem_parent), growth_func(growth_func)
 {
     elem = allocate_element();
+    
+    if (info.level-1 > 0) {
+        
+        if (info.depth == 0) {
+            // parallelize children creation
+            std::vector<FractalElement_t*> tmp(info.children_num);
 
-    growth_func(elem, info);
-
-    if (info.depth < fractal_depth) {
-        for (int i = 0; i < info.children_num; i++) {
+            #pragma omp parallel for
+            for (int i = 0; i < info.children_num; i++) {
             
-            FractalElementInfo child_info;
-
-            child_info.depth = info.depth+1;
-            child_info.label = info.label*info.children_num+i-1;
-            child_info.children_num = info.children_num;
+                FractalElementInfo child_info;
+                
+                child_info.level = info.level-1;
+                child_info.depth = info.depth+1;
+                child_info.label = info.label*info.children_num+i+1;
+                child_info.children_num = info.children_num;
+                
+                tmp[i] = new FractalElement(child_info,
+                                                fractal_depth,
+                                                fractal,
+                                                this,
+                                                growth_func);
+            }
             
-            children.add(new FractalElement(child_info,
-                                            fractal_depth,
-                                            fractal,
-                                            this,
-                                            growth_func)
-                        );
+            for (int i = 0; i < info.children_num; i++) {
+                children.add(tmp[i]);
+            }
+        } else {
+            // not enough granularity for parallelization
+            for (int i = 0; i < info.children_num; i++) {
+                
+                FractalElementInfo child_info;
+
+                child_info.level = info.level-1;
+                child_info.depth = info.depth+1;
+                child_info.label = info.label*info.children_num+i+1;
+                child_info.children_num = info.children_num;
+                
+                children.add(new FractalElement(child_info,
+                                                fractal_depth,
+                                                fractal,
+                                                this,
+                                                growth_func)
+                            );
+            }
         }
     }
+    
+    growth_func(elem, info);
 }
 
 template <typename ElemType, typename GrowthFunc>
@@ -89,8 +120,22 @@ ReturnType FractalElement<ElemType,GrowthFunc>::apply(ApplyFunc apply_func) {
     std::vector<ReturnType> ret_vals;
 
     if (!children.empty()) {
-        for (int i = 0; i < info.children_num; i++) {
-            ret_vals.push_back(children[i]->template apply<ApplyFunc,ReturnType>(apply_func));
+        if (info.depth == 0) {
+            // parallelize 
+            std::vector<ReturnType> tmp(4);
+
+            #pragma omp parallel for
+            for (int i = 0; i < info.children_num; i++) {
+                tmp[i] = children[i]->template apply<ApplyFunc,ReturnType>(apply_func);
+            }
+
+            for (int i = 0; i < info.children_num; i++) {
+                ret_vals.push_back(tmp[i]);
+            }
+        } else {
+            for (int i = 0; i < info.children_num; i++) {
+                ret_vals.push_back(children[i]->template apply<ApplyFunc,ReturnType>(apply_func));
+            }
         }
     }
         

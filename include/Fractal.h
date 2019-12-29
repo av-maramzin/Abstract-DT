@@ -16,9 +16,17 @@ class FractalElementInfo {
     
     public:
 
-        FractalElementInfo(int elem_depth=-1, int elem_label=-1, int elem_children_num=-1)
-            : depth(elem_depth), label(elem_label), children_num(elem_children_num) {}
+        FractalElementInfo(int elem_level=-1, int elem_depth=-1, int elem_label=-1, int elem_children_num=-1)
+            : level(elem_level), depth(elem_depth), children_num(elem_children_num) {}
 
+        void check() const {
+            if (level == 0) {
+                std::cerr << "FractalElementInfo::check(): error: cannot operate at the 0 level";
+                std::exit(EXIT_FAILURE);
+            }
+        }
+
+        int level;
         int depth;
         int label;
         int children_num;
@@ -41,7 +49,7 @@ class Fractal {
             delete root;
         }
 
-        void grow(int depth, int label_seed);
+        void grow(int top_level, int label_seed);
         
         template <typename ApplyFunc,typename ReturnType>
         ReturnType apply(ApplyFunc apply_func);
@@ -55,6 +63,7 @@ class Fractal {
         int scaling_factor;
         int children_num;
 
+        int top_level;
         int depth;
         int label_seed;
 };
