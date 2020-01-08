@@ -4,12 +4,13 @@
 #include <cmath>
 
 #include <iostream>
+#include <omp.h>
 
 #include "Sequence.h"
 
 namespace abstract {
 
-template <typename ElemType, typename GrowthFunc>
+template <typename ElemType, int ChildNum>
 class FractalElement;
 
 class FractalElementInfo {
@@ -28,64 +29,88 @@ class FractalElementInfo {
 
         int level;
         int depth;
-        int label;
         int children_num;
 };
 
-template <typename ElemType, typename GrowthFunc>
+template <typename ElemType, int ChildNum>
 class Fractal {
 
     public:
         
-        using fractal_t = Fractal<ElemType,GrowthFunc>;
+        using Fractal_t = Fractal<ElemType,ChildNum>;
 
-        Fractal(GrowthFunc fractal_growth_func, int scaling_factor=-1) 
-            : root(nullptr), scaling_factor(scaling_factor), growth_func(fractal_growth_func)
+        Fractal() 
+            : root(nullptr) 
         {
-            children_num = std::pow(2,scaling_factor);
+            children_num = ChildNum;
         }
         
         ~Fractal() {
             delete root;
         }
 
-        void grow(int top_level, int label_seed);
-        
+        // Fractal grow method
+        template <typename GrowthFuncType, // function to grow and fill fractal elements 
+                  typename GrowthSeedType, // data to use for elements growth and filling 
+                  typename NextGrowthSeedFuncType, // transformation of data from element to element 
+                  typename GrowthStopFuncType> // growth stop condition
+        void grow(int depth, 
+                  GrowthFuncType growth_func, 
+                  GrowthSeedType growth_seed, 
+                  NextGrowthSeedFuncType next_growth_seed_func,
+                  GrowthStopFuncType growth_stop_func);
+               
         template <typename ApplyFunc,typename ReturnType>
         ReturnType apply(ApplyFunc apply_func);
 
+        template <typename WalkFunc,typename ReturnType>
+        ReturnType walk(WalkFunc apply_func);
+
     private:
 
-        FractalElement<ElemType,GrowthFunc>* root; 
+        // Fractal's root element
+        FractalElement<ElemType,ChildNum>* root; 
 
-        GrowthFunc growth_func;
-
-        int scaling_factor;
+        // Fractal's structural information
         int children_num;
-
         int top_level;
         int depth;
-        int label_seed;
 };
 
-template <typename ElemType, typename GrowthFunc>
+template <typename ElemType, int ChildNum>
 class FractalElement {
 
     public:
 
-        using Fractal_t = Fractal<ElemType,GrowthFunc>;
-        using FractalElement_t = FractalElement<ElemType,GrowthFunc>;
+        using Fractal_t = Fractal<ElemType,ChildNum>;
+        using FractalElement_t = FractalElement<ElemType,ChildNum>;
 
-        FractalElement(const FractalElementInfo& elem_info,
-                       int fractal_depth = -1,
-                       Fractal_t* fractal = nullptr,
-                       FractalElement_t* elem_parent = nullptr,
-                       GrowthFunc growth_func = nullptr);
-
+        template <typename GrowthFuncType, 
+                  typename GrowthSeedType, 
+                  typename NextGrowthSeedFuncType, 
+                  typename GrowthStopFuncType>
+        explicit FractalElement(const FractalElementInfo& elem_info,
+                                Fractal_t* fractal,
+                                int fractal_depth,
+                                FractalElement_t* elem_parent,
+                                GrowthFuncType growth_func,
+                                GrowthSeedType growth_func_param,
+                                NextGrowthSeedFuncType next_growth_seed_func,
+                                GrowthStopFuncType growth_stop_func);
         ~FractalElement();
 
         template <typename ApplyFunc,typename ReturnType>
         ReturnType apply(ApplyFunc apply_func);
+
+        template <typename WalkFunc,typename ReturnType>
+        ReturnType walk(WalkFunc walk_func);
+
+        FractalElement_t* get_parent_ptr() { return parent; }
+        FractalElement_t* get_child_ptr(int i) { return children[i]; }
+        
+        ElemType* get_elem_data() { return elem; }
+
+        bool has_children() { return !children.empty(); }
 
     private:
         
@@ -95,12 +120,9 @@ class FractalElement {
 
     private:
 
-        // fractal the element belongs to
+        // Fractal the element belongs to
         Fractal_t* fractal;
         
-        // functin to grow the fractal element
-        GrowthFunc growth_func;
-
         // structural links with parent and children fractal elements
         FractalElement_t* parent;
         Sequence<FractalElement_t*> children;
