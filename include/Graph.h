@@ -29,7 +29,11 @@ class Graph {
         std::size_t edge_size() const { return edges.size(); }
         
         void add_node(int node_index, NodeType node) {
-            nodes[node_index] = node;
+            if (node_index < nodes.capacity()) {
+                nodes[node_index] = node;
+            } else {
+
+            }
         }
 
         void add_edge(std::pair<int,int> from_to_index_pair, EdgeType edge) {

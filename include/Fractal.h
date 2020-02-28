@@ -10,128 +10,104 @@
 
 namespace abstract {
 
-template <typename ElemType, int ChildNum>
-class FractalElement;
+struct FractalElementInfo {
 
-class FractalElementInfo {
-    
-    public:
+    FractalElementInfo()
+        : depth(-1), level(-1), children_num(-1) {}
 
-        FractalElementInfo(int elem_level=-1, int elem_depth=-1, int elem_label=-1, int elem_children_num=-1)
-            : level(elem_level), depth(elem_depth), children_num(elem_children_num) {}
-
-        void check() const {
-            if (level == 0) {
-                std::cerr << "FractalElementInfo::check(): error: cannot operate at the 0 level";
-                std::exit(EXIT_FAILURE);
-            }
+    void check() const {
+        if (level == 0) {
+            std::cerr << "FractalElementInfo::check(): error: cannot operate at the 0 level";
+            std::exit(EXIT_FAILURE);
         }
+    }
 
-        int level;
-        int depth;
-        int children_num;
+    int depth;
+    int level;
+    int children_num;
 };
 
-template <typename ElemType, int ChildNum>
-class Fractal {
-
-    public:
-        
-        using Fractal_t = Fractal<ElemType,ChildNum>;
-
-        Fractal() 
-            : root(nullptr) 
-        {
-            children_num = ChildNum;
-        }
-        
-        ~Fractal() {
-            delete root;
-        }
-
-        // Fractal grow method
-        template <typename GrowthFuncType, // function to grow and fill fractal elements 
-                  typename GrowthSeedType, // data to use for elements growth and filling 
-                  typename NextGrowthSeedFuncType, // transformation of data from element to element 
-                  typename GrowthStopFuncType> // growth stop condition
-        void grow(int depth, 
-                  GrowthFuncType growth_func, 
-                  GrowthSeedType growth_seed, 
-                  NextGrowthSeedFuncType next_growth_seed_func,
-                  GrowthStopFuncType growth_stop_func);
-               
-        template <typename ApplyFunc,typename ReturnType>
-        ReturnType apply(ApplyFunc apply_func);
-
-        template <typename WalkFunc,typename ReturnType>
-        ReturnType walk(WalkFunc apply_func);
-
-    private:
-
-        // Fractal's root element
-        FractalElement<ElemType,ChildNum>* root; 
-
-        // Fractal's structural information
-        int children_num;
-        int top_level;
-        int depth;
-};
-
-template <typename ElemType, int ChildNum>
+template <typename ElemType, int ChildrenNum>
 class FractalElement {
 
     public:
+        
+        using Fractal_t = Fractal<ElemType,ChildrenNum>;
 
-        using Fractal_t = Fractal<ElemType,ChildNum>;
-        using FractalElement_t = FractalElement<ElemType,ChildNum>;
+        FractalElement(Fractal_t* fractal, FractalElementInfo info, ElemType* parent) 
+            : fractal(fractal), info(info), parent(parent) 
+        {
+        
+            if ((info.level > 0) && !this->stop_condition()) {
+                for (int i = 0; i < ChildrenNum; i++) {
+    
+                    FractalElementInfo child_info;
+                    child_info.level = info.level-1;
+                    child_info.depth = info.depth+1;
+                    child_info.children_num = info.children_num;
 
-        template <typename GrowthFuncType, 
-                  typename GrowthSeedType, 
-                  typename NextGrowthSeedFuncType, 
-                  typename GrowthStopFuncType>
-        explicit FractalElement(const FractalElementInfo& elem_info,
-                                Fractal_t* fractal,
-                                int fractal_depth,
-                                FractalElement_t* elem_parent,
-                                GrowthFuncType growth_func,
-                                GrowthSeedType growth_func_param,
-                                NextGrowthSeedFuncType next_growth_seed_func,
-                                GrowthStopFuncType growth_stop_func);
-        ~FractalElement();
+                    children.push_back(new ElemType(fractal, child_info, this)); 
+                }
+            }
+
+            this->grow();
+        }
+
+        virtual ~FractalElement();
+
+        // the actual fractal element type must overload this method with 
+        // element specific growth functionality
+        virtual void grow() = 0;
+
+        virtual bool stop_condition() { return false; }
 
         template <typename ApplyFunc,typename ReturnType>
         ReturnType apply(ApplyFunc apply_func);
-
-        template <typename WalkFunc,typename ReturnType>
-        ReturnType walk(WalkFunc walk_func);
-
-        FractalElement_t* get_parent_ptr() { return parent; }
-        FractalElement_t* get_child_ptr(int i) { return children[i]; }
-        
-        ElemType* get_elem_data() { return elem; }
-
-        bool has_children() { return !children.empty(); }
-
-    private:
-        
-        ElemType* allocate_element() {
-            return new ElemType;   
-        }
 
     private:
 
         // Fractal the element belongs to
         Fractal_t* fractal;
-        
+
         // structural links with parent and children fractal elements
-        FractalElement_t* parent;
-        Sequence<FractalElement_t*> children;
+        ElemType* parent;
+        std::vector<ElemType*> children;
 
         // element information
         FractalElementInfo info;
+};
 
-        // satellite fractal element data
-        ElemType* elem;
+template <typename ElemType, int ChildrenNum>
+class Fractal {
+
+    public:
+        
+        using Fractal_t = Fractal<ElemType,ChildrenNum>;
+
+        Fractal() 
+            : root(nullptr) 
+        {
+            children_num = ChildrenNum;
+        }
+        
+        ~Fractal() {
+            if (root != nullptr) delete root;
+        }
+
+        void grow(int depth);
+
+        template <typename ApplyFunc,typename ReturnType>
+        ReturnType apply(ApplyFunc apply_func);
+
+    private:
+
+        // Fractal's root element
+        FractalElement<ElemType,ChildrenNum>* root;
+
+        // Fractal's structural information
+        int children_num;
+        int top_level;
+        int depth;
 };
 
 #include "Fractal.tpp"
