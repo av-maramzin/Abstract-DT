@@ -17,7 +17,9 @@ template <typename ElemType, int Arity>
 class Fractal {
 
     public:
-        
+       
+        using Fractal_t = Fractal<ElemType,Arity>;
+
         static const int arity = Arity;
 
         class ElementInfo {
@@ -38,32 +40,13 @@ class Fractal {
                 int level;
                 static const int children_num = Arity;
         };
-        
+       
         class Element {
 
             public:
 
-                Element() 
-                    : parent(nullptr) 
-                {
-                    children.clear();
-                }
-
-                Element(Fractal_t* fractal, ElementInfo info, Element* parent) 
-                    : fractal(fractal), info(info), parent(parent) 
-                {
-                    if ((info.level > 0) && !this->stop_condition()) {
-                        for (int i = 0; i < Arity; i++) {
-        
-                            ElementInfo child_info;
-                            child_info.level = info.level-1;
-                            child_info.depth = info.depth+1;
-                            child_info.children_num = info.children_num;
-
-                            children.push_back(new ElemType(fractal, child_info, this)); 
-                        }
-                    }
-                }
+                Element();
+                Element(Fractal<ElemType,Arity>* fractal, ElementInfo info, Element* parent); 
 
                 virtual ~Element() {
                     if (!children.empty()) {
@@ -75,23 +58,26 @@ class Fractal {
 
                 // customization interface 
                 virtual void grow(int depth) = 0; // growth 
-                virtual bool stop_condition() {}; // no growth stop condition by default
+                virtual bool stop_condition() { return false; }; // no growth stop condition by default
                 
             protected:
 
-                ElementInfo info;
+                const ElementInfo& element_info() const { return info; }
 
             private:
                 
-                // structural information
+                // [*] structural information
+                ElementInfo info;
+                
+                // fractal the element belongs to
                 Fractal* fractal;
+                // 
                 Element* parent;
-                std::vector<Element*> children;
+                std::vector<std::unique_ptr<Element>> children;
         };
 
-        Fractal() : depth(-1) {} 
+        Fractal();
 
-        const int arity = Arity;
 
         void grow(int depth);
         

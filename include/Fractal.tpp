@@ -1,4 +1,6 @@
 
+//
+
 template <typename ElemType, int Arity> 
 void Fractal::grow(int depth) {
 
@@ -17,104 +19,25 @@ void Fractal::grow(int depth) {
                             nullptr // parent fractal element (root does not have a parent pointer)
                             );
     }
-
-
-
-    this->depth = depth;
-
-    if (this->depth >= 0) {
-        root = new ElemType(depth);
-    }
 }
 
 template <typename ElemType, int Arity> 
-void FractalElement::FractalElement(int depth) {
+void Fractal<ElemType,Arity>::Element::Element(Fractal_t* fractal, ElementInfo info, ElemType* parent) 
+    : fractal(fractal), info(info), parent(parent)
+{
+    if ((info.level > 0) && !this->stop_condition()) {
+        for (int i = 0; i < ChildrenNum; i++) {
 
+            ElementInfo child_info;
+            child_info.level = info.level-1;
+            child_info.depth = info.depth+1;
+            child_info.children_num = info.children_num;
 
-}
-
-// [*] Fractal is a hierarchical data structure / computational pattern /
-// algorithmic skeleton / which possesses the following informal properties:
-// 
-// * self-similarity
-// * unfolding symmetry
-// * replication
-// * parallelism
-//
-
-template <typename ElemType, int Arity> 
-class Fractal {
-
-    public:
-        
-        Fractal() {} 
-
-        const int arity = Arity;
-
-
-        virtual void grow(int depth) = 0;
-        
-        virtual ~Fractal();
-
-    private:
-
-        FractalElement<ElemType,Arity>* root;
-};
-
-class FractalElement {
-    
-    public:
-        
-        FractalElement() 
-            : parent(nullptr)
-        
-        
-
-    private:
-
-
-        // hierarchy 
-
-        FractalElement* parent;
-        std::vector<FractalElement*> children;
-};
-
-
-class FractalElementParameters {
-
-
-};
-
-class FractalElementInfo {
-
-
-
-};
-
-
-template <typename T>
-void map(int (*f)(int), int array[], size_t n) {
-    for (unsigned i = 0; i < n; i++) {
-        array[i] = f(array[i]);
+            children.push_back(
+                    std::unique_ptr<ElemType>( new ElemType(fractal, child_info, this) )
+            );
+        }
     }
 }
 
-template <typename T>
-T reduce(T array[], size_t n) {
-    T res;
-
-    res = 0;
-    for (unsigned i = 0; i < n; i++) {
-        res += array[i];
-    }
-
-    return res;
-}
-
-//reduce
-//sort
-
-
-}
-
-#endif // #ifndef ABSTRACT_FRACTAL_H
+// end
