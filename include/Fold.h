@@ -3,31 +3,32 @@
 
 namespace abstract {
 
-
-template <typename ElemType>
+template <typename ElemType, typename ComputeType>
 class Fold {
 
     public:
         
         class Element {
             
+            virtual ComputeType compute(ComputeType) = 0;
 
-
+            private:
+                int depth;
         };
 
         Fold();
         
         template <typename SeedType>
         void grow(int depth);
-
-        void compute();
+        
+        template <typename ComputeType>
+        void compute(ComputeType);
 
     private:
 
         std::vector<std::unique_ptr<Element>> elements;
 
 };
-
 
 template <typename ElemType>
 template <typename SeedType>
@@ -43,9 +44,16 @@ void Fold<ElemType>::grow(int depth) {
 
 }
 
+template <typename ElemType>
+void Fold<ElemType>::compute(int depth) {
+
+    ComputeType ret = elements[depth]->compute();
+    for (size_t i = depth-1; i > 0; i--) {
+        ret = elements[i]->compute(ret);
+    }
 
 
-
+}
 
 Fold<struct Lateral>::Element
 
