@@ -29,6 +29,7 @@ class Fold {
                 virtual SeedType inject(SeedType) = 0;
 
             private:
+                SeedType 
                 int depth;
         };
 
