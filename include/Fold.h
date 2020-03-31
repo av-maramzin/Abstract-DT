@@ -8,8 +8,9 @@ class Fold {
 
     public:
 
-        using Compute_t = ComputeType;
         using Element_t = ElemType;
+        using Compute_t = ComputeType;
+        using Seed_t = ElemType;
 
         // [*] Usage:
         // 
@@ -29,7 +30,7 @@ class Fold {
                 virtual SeedType inject(SeedType) = 0;
 
             private:
-                SeedType 
+                SeedType seed; 
                 int depth;
         };
 
