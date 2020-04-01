@@ -10,7 +10,7 @@ class Fold {
 
         using Element_t = ElemType;
         using Compute_t = ComputeType;
-        using Seed_t = ElemType;
+        using Seed_t = SeedType;
 
         // [*] Usage:
         // 
@@ -29,7 +29,11 @@ class Fold {
                 virtual ComputeType compute(ComputeType) = 0;
                 virtual SeedType inject(SeedType) = 0;
 
+                void plant_seed(SeedType s) { seed = s; }
+                const SeedType extract_seed() const { return seed; }
+
             private:
+                
                 SeedType seed; 
                 int depth;
         };
