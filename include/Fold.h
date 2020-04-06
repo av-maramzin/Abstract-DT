@@ -1,6 +1,9 @@
 #ifndef ABSTRACT_FOLD_H
 #define ABSTRACT_FOLD_H
 
+#include <vector>
+#include <memory>
+
 namespace abstract {
 
 template <typename ElemType, typename ComputeType, typename SeedType>
@@ -29,6 +32,8 @@ class Fold {
                 virtual ComputeType compute(ComputeType) = 0;
                 virtual SeedType inject(SeedType) = 0;
 
+            protected:
+
                 void plant_seed(SeedType s) { seed = s; }
                 const SeedType extract_seed() const { return seed; }
 
@@ -43,13 +48,23 @@ class Fold {
        
         // [*] Global interface to the Fold class
         void grow(int depth);
-        void inject();
+        void inject(SeedType seed);
         ComputeType compute();
 
     private:
         int depth;
         std::vector<std::unique_ptr<Element>> elements;
 };
+
+template <typename ElemType, typename ComputeType, typename SeedType>
+Fold<ElemType,ComputeType,SeedType>::Fold()
+    : elements(), depth(-1) {}
+
+template <typename ElemType, typename ComputeType, typename SeedType>
+Fold<ElemType,ComputeType,SeedType>::~Fold() {
+    depth = -1;
+    elements.clear();
+}
 
 template <typename ElemType, typename ComputeType, typename SeedType>
 void Fold<ElemType,ComputeType,SeedType>::grow(int depth) {
@@ -60,7 +75,7 @@ void Fold<ElemType,ComputeType,SeedType>::grow(int depth) {
 }
 
 template <typename ElemType, typename ComputeType, typename SeedType>
-void Fold<ElemType,ComputeType,SeedType>::compute() {
+ComputeType Fold<ElemType,ComputeType,SeedType>::compute() {
     ComputeType ret;
     ret = elements[depth]->compute(ret);
     for (size_t i = depth-1; i > 0; i--) {
@@ -69,7 +84,7 @@ void Fold<ElemType,ComputeType,SeedType>::compute() {
 }
 
 template <typename ElemType, typename ComputeType, typename SeedType>
-SeedType Fold<ElemType,ComputeType,SeedType>::inject(SeedType seed) {
+void Fold<ElemType,ComputeType,SeedType>::inject(SeedType seed) {
     SeedType s;
     s = elements[0]->inject(seed);
     for (size_t i = 1; i < depth; i++) {
