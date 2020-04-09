@@ -5,58 +5,29 @@
 #include <vector>
 #include <memory>
 
+#include "Computation.h"
+
 namespace abstract {
 
-template <typename ElemType, typename ComputeType, typename SeedType>
-class Fold {
+template <typename ComputeType>
+class Reduce : public Computation<ComputeType> {
 
     public:
 
-        using Element_t = ElemType;
         using Compute_t = ComputeType;
-        using Seed_t = SeedType;
 
-        // [*] Usage:
-        // 
-        // Users of the Fold class template must specify their own 
-        // type of elements to be folded by deriving it from below
-        // Element class. The latter serves as the backbone of the 
-        // fold, knows its depth and provides an interface function
-        // compute() to be overriden by concrete classes of elements
-        //
-        class Element {
-            
-            public:
-
-                Element() : depth(-1), seed() {}
-                virtual ~Element() {}
-
-                virtual ComputeType compute(const ComputeType) = 0;
-                virtual SeedType inject(const SeedType) = 0;
-
-            protected:
-
-                void plant_seed(SeedType s) { seed = s; }
-                const SeedType extract_seed() const { return seed; }
-
-            private:
-                
-                SeedType seed; 
-                int depth;
-        };
-
-        Fold();
-        ~Fold();
+        Reduce();
+        ~Reduce();
        
-        // [*] Global interface to the Fold class
-        void grow(int depth);
-        void shrink(int depth);
-        void inject(const SeedType seed);
+        // [*] Global interface to Reduce class
         ComputeType compute();
+        
+        void grow(int width);
+        void shrink(int width);
 
     private:
-        int depth;
-        std::vector<std::unique_ptr<Element>> elements;
+        int widthdepth;
+        std::vector<std::unique_ptr<Computation<ComputeType>>> elements;
 };
 
 template <typename ElemType, typename ComputeType, typename SeedType>
