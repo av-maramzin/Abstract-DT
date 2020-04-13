@@ -14,8 +14,8 @@ class Computation {
 
         using Compute_t = ComputeType;
 
-        Computation();
-        ~Computation();
+        Computation() {}
+        ~Computation() {}
        
         virtual ComputeType compute() = 0;
 };

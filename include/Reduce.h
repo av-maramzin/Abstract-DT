@@ -1,5 +1,5 @@
-#ifndef ABSTRACT_FOLD_H
-#define ABSTRACT_FOLD_H
+#ifndef ABSTRACT_REDUCE_H
+#define ABSTRACT_REDUCE_H
 
 #include <iostream>
 #include <vector>
@@ -9,8 +9,9 @@
 
 namespace abstract {
 
-template <typename ComputeType>
-class Reduce : public Computation<ComputeType> {
+template <typename ComputeType, typename ElemType>
+class Reduce : public Computation<ComputeType>
+{
 
     public:
 
@@ -19,66 +20,58 @@ class Reduce : public Computation<ComputeType> {
         Reduce();
         ~Reduce();
        
-        // [*] Global interface to Reduce class
         ComputeType compute();
-        
-        void grow(int width);
-        void shrink(int width);
+
+        void init(ComputeType);
+
+        void grow(size_t width);
+        void shrink(size_t width);
 
     private:
-        int widthdepth;
+
+        int width;
         std::vector<std::unique_ptr<Computation<ComputeType>>> elements;
 };
 
-template <typename ElemType, typename ComputeType, typename SeedType>
-Fold<ElemType,ComputeType,SeedType>::Fold()
-    : elements(), depth(-1) {}
+template <typename ComputeType, typename ElemType>
+Reduce<ComputeType,ElemType>::Reduce()
+    : elements(), width(-1) {}
 
-template <typename ElemType, typename ComputeType, typename SeedType>
-Fold<ElemType,ComputeType,SeedType>::~Fold() {
-    depth = -1;
+template <typename ComputeType, typename ElemType>
+Reduce<ComputeType,ElemType>::~Reduce() {
+    width = -1;
     elements.clear();
 }
 
-template <typename ElemType, typename ComputeType, typename SeedType>
-void Fold<ElemType,ComputeType,SeedType>::grow(int depth) {
-    for (size_t i = depth; i > 0; i--) {
-        std::unique_ptr<Element> elem(new ElemType());
+template <typename ComputeType, typename ElemType>
+void Reduce<ComputeType,ElemType>::grow(size_t width) {
+    this->width = width;
+    for (size_t i = 0; i < width; i++) {
+        std::unique_ptr<Computation<ComputeType>> elem(new ElemType());
         elements.push_back(std::move(elem));
     }
 }
 
-template <typename ElemType, typename ComputeType, typename SeedType>
-void Fold<ElemType,ComputeType,SeedType>::shrink(int new_depth) {
-
-    if ((depth >= new_depth) && (new_depth >= 0)) {
-        while (depth > new_depth) {
+template <typename ComputeType, typename ElemType>
+void Reduce<ComputeType,ElemType>::shrink(size_t new_width) {
+    if ((width > new_width) && (new_width >= 0)) {
+        while (width > new_width) {
             elements.pop_back();
-            depth--;
+            width--;
         }
     } else {
         std::cerr << "Fold<>::shrink(new_depth): invalid new_depth argument value" << std::endl;
     }
 }
 
-template <typename ElemType, typename ComputeType, typename SeedType>
-ComputeType Fold<ElemType,ComputeType,SeedType>::compute() {
+template <typename ComputeType, typename ElemType>
+ComputeType Reduce<ComputeType,ElemType>::compute() {
     ComputeType ret;
-    ret = elements[depth]->compute(ret);
-    for (size_t i = depth-1; i >= 0; i--) {
-        ret = elements[i]->compute(ret);
-    }
-}
-
-template <typename ElemType, typename ComputeType, typename SeedType>
-void Fold<ElemType,ComputeType,SeedType>::inject(const SeedType seed) {
-    SeedType s;
-    s = elements[0]->inject(seed);
-    for (size_t i = 1; i < depth; i++) {
-        s = elements[i]->inject(s);
+    for (size_t i = 0; i < width; i++) {
+        ret += elements[i]->compute();
     }
 }
 
 }
 
-#endif // #ifndef ABSTRACT_FOLD_H
+#endif // #ifndef ABSTRACT_REDUCE_H

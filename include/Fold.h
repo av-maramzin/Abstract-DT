@@ -7,8 +7,8 @@
 
 namespace abstract {
 
-template <typename ElemType, typename ComputeType, typename SeedType>
-class Fold {
+template <typename ComputeType, typename ElemType, typename SeedType>
+class Fold : public Computation<ComputeType> {
 
     public:
 
@@ -24,7 +24,8 @@ class Fold {
         // fold, knows its depth and provides an interface function
         // compute() to be overriden by concrete classes of elements
         //
-        class Element {
+        template <typename ElemType>
+        class Element : public Computation<ComputeType> {
             
             public:
 
