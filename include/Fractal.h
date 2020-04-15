@@ -3,16 +3,6 @@
 
 namespace abstract {
 
-// [*] Fractal is a hierarchical data structure / computational pattern /
-// algorithmic skeleton / which possesses the following informal properties:
-// 
-// * self-similarity
-// * structuredness
-// * unfolding symmetry
-// * replication
-// * parallelism
-//
-
 template <typename ElemType, int Arity> 
 class Fractal {
 
