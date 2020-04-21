@@ -17,7 +17,8 @@ class Computation {
         Computation() {}
         ~Computation() {}
        
-        virtual ComputeType compute() = 0;
+        virtual ComputeType compute() {}
+        virtual ComputeType compute(const std::vector<ComputeType>&) {}
 };
 
 }

@@ -1,16 +1,32 @@
-#ifndef ABSTRACT_FRACTAL_H
-#define ABSTRACT_FRACTAL_H
+#ifndef ABSTRACT_FRACTAL_DYNAMIC_H
+#define ABSTRACT_FRACTAL_DYNAMIC_H
 
 namespace abstract {
 
 template <typename ElemType, int Arity> 
-class Fractal {
+class Fractal { 
 
     public:
-       
-        using Fractal_t = Fractal<ElemType,Arity>;
 
-        static const int arity = Arity;
+        class Element {
+
+        };
+
+        template <typename ComputeType>
+        class Computation {
+        
+            public:
+                
+                ComputeType operator()(Element*) {
+                    
+                }
+        };
+        
+
+        compute(Computation<ComputeType> );
+
+        void grow(size_t depth);
+
 
         class ElementInfo {
             
@@ -49,7 +65,10 @@ class Fractal {
                 // customization interface 
                 virtual void grow(int depth) = 0; // growth 
                 virtual bool stop_condition() { return false; }; // no growth stop condition by default
-                
+        
+                virtual compute
+
+
             protected:
 
                 const ElementInfo& element_info() const { return info; }
@@ -66,46 +85,17 @@ class Fractal {
                 std::vector<std::unique_ptr<Element>> children;
         };
 
-        Fractal();
-
+        Fractal() {}
+        ~Fractal() {} 
 
         void grow(int depth);
         
-        ~Fractal() { 
-            delete root;   
-        }
-
     private:
 
         int depth;
-        Element* root;
+        std::unique_ptr<Element> root;
 };
 
-
-
-template <typename T>
-void map(int (*f)(int), int array[], size_t n) {
-    for (unsigned i = 0; i < n; i++) {
-        array[i] = f(array[i]);
-    }
 }
 
-template <typename T>
-T reduce(T array[], size_t n) {
-    T res;
-
-    res = 0;
-    for (unsigned i = 0; i < n; i++) {
-        res += array[i];
-    }
-
-    return res;
-}
-
-//reduce
-//sort
-
-
-}
-
-#endif // #ifndef ABSTRACT_FRACTAL_H
+#endif // #ifndef ABSTRACT_FRACTAL_DYNAMIC_H
