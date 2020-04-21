@@ -8,8 +8,19 @@ class Fractal {
 
     public:
 
-        class Element {
-
+        // 
+        // OPTIMIZATION HINT
+        // 
+        // balanced fractal forms a complete tree and
+        // can be laid out linearly in memory as a heap
+        // data structure
+        //
+        // unbalanced fractal on the other hand has to be
+        // built as a tree allocated on the heap dynamically
+        //
+        enum class Type {
+            balanced = 0,
+            unbalanced
         };
 
         template <typename ComputeType>
@@ -66,6 +77,8 @@ class Fractal {
                 virtual void grow(int depth) = 0; // growth 
                 virtual bool stop_condition() { return false; }; // no growth stop condition by default
         
+
+
                 virtual compute
 
 
@@ -89,6 +102,9 @@ class Fractal {
         ~Fractal() {} 
 
         void grow(int depth);
+
+
+        compute
         
     private:
 
