@@ -3,12 +3,15 @@
 
 namespace abstract {
 
-template <typename ElemType, int Arity> 
+template <typename ElemType, typename SeedType, int Arity> 
 class Fractal { 
 
     public:
 
-        // 
+        Element_t = ElemType;
+        Seed_t = SeedType;
+        const int arity = Arity;
+
         // OPTIMIZATION HINT
         // 
         // balanced fractal forms a complete tree and
@@ -23,22 +26,11 @@ class Fractal {
             unbalanced
         };
 
-        template <typename ComputeType>
-        class Computation {
-        
-            public:
-                
-                ComputeType operator()(Element*) {
-                    
-                }
-        };
-        
-
-        compute(Computation<ComputeType> );
-
-        void grow(size_t depth);
-
-
+        // ElementInfo class 
+        //
+        // builds the location information of an element 
+        // withing the fractal into the element
+        //
         class ElementInfo {
             
             public:
@@ -62,25 +54,13 @@ class Fractal {
 
             public:
 
-                Element();
-                Element(Fractal<ElemType,Arity>* fractal, ElementInfo info, Element* parent); 
-
-                virtual ~Element() {
-                    if (!children.empty()) {
-                        for (int i = 0; i < Arity; i++) {
-                            delete children[i];
-                        }
-                    }
-                }
-
                 // customization interface 
-                virtual void grow(int depth) = 0; // growth 
-                virtual bool stop_condition() { return false; }; // no growth stop condition by default
-        
+                Element(Seed_t seed, ElementInfo info);
+                virtual ~Element() {}
 
-
-                virtual compute
-
+                virtual void grow(Seed_t seed);
+                virtual bool growth_stop_condition() { return false; }; // no growth stop condition by default
+                virtual Seed_t spawn_child_seed(int child_id) {}
 
             protected:
 
@@ -88,28 +68,48 @@ class Fractal {
 
             private:
                 
-                // [*] structural information
-                ElementInfo info;
+                // private framework construction methods
                 
+                // specify the fractal this element belongs to
+                void set_fractal(Fractal* fractal);
+                void set_parent_element(Element* parent);
+
+            private:
+
+                // structural information
+                ElementInfo info;
                 // fractal the element belongs to
                 Fractal* fractal;
-                // 
+                // structural links 
                 Element* parent;
                 std::vector<std::unique_ptr<Element>> children;
         };
 
-        Fractal() {}
+        Fractal() 
+            : depth(-1), top_level(-1), 
+              root(nullptr), type(Type::unbalanced) {}
+        
         ~Fractal() {} 
 
-        void grow(int depth);
+        void grow(SeedType seed, int depth);
 
-
-        compute
+        template <typename ComputeType, typename ComputeFunc>
+        ComputeType compute(ComputeFunc func);
         
     private:
 
+        Type type;
         int depth;
+        int top_level;
+        
+        // unbalanced fractal implementation 
+        // a pointer to the root element
         std::unique_ptr<Element> root;
+        
+        // balanced fractal implementation
+        // an array of fractal tree elements
+        // laid out linearly in memory
+        std::vector<std::unique_ptr<Element>> elements;
 };
 
 }
