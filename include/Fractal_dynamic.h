@@ -52,6 +52,8 @@ class Fractal {
        
         class Element {
 
+            friend class Fractal<ElemType,SeedType,Arity>;
+
             public:
 
                 // customization interface 
@@ -60,16 +62,20 @@ class Fractal {
 
                 virtual void grow(Seed_t seed);
                 virtual bool growth_stop_condition() { return false; }; // no growth stop condition by default
-                virtual Seed_t spawn_child_seed(int child_id) {}
+                virtual Seed_t spawn_child_seed(int child_id) {
+                    Seed_t ret;
+                    return ret;
+                }
+
+                template <typename ComputeType, typename ComputeFunc>
+                ComputeType compute(ComputeFunc func);
 
             protected:
 
                 const ElementInfo& element_info() const { return info; }
 
             private:
-                
-                // private framework construction methods
-                
+
                 // specify the fractal this element belongs to
                 void set_fractal(Fractal* fractal);
                 void set_parent_element(Element* parent);
@@ -91,11 +97,33 @@ class Fractal {
         
         ~Fractal() {} 
 
+        void set_type(Type t) { type = t; }
+        Type get_type() const { return type; }
+
         void grow(SeedType seed, int depth);
 
         template <typename ComputeType, typename ComputeFunc>
         ComputeType compute(ComputeFunc func);
+       
+        // helper functions
+        size_t get_elements_num(int depth);
+        int index_to_depth(int index);
+    
+    private:
         
+        // private framework computation methods
+        // (implement compute() method)
+        template <typename ComputeType, typename ComputeFunc>
+        ComputeType compute_unbalanced(ComputeFunc compute_func);
+        
+        template <typename ComputeType, typename ComputeFunc>
+        ComputeType compute_balanced(ComputeFunc compute_func);
+
+        // private framework construction methods
+        // (implement grow() method)
+        std::unique_ptr<Element> grow_unbalanced(SeedType seed, ElementInfo info);
+        void grow_balanced(SeedType seed, ElementInfo info);
+
     private:
 
         Type type;

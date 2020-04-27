@@ -27,16 +27,13 @@ void Fractal<ElemType,SeedType,Arity>::grow(SeedType seed, int depth)
 }
 
 template <typename ElemType, typename SeedType, int Arity>
-Fractal<ElemType,SeedType,Arity>::grow_unbalanced(SeedType seed, ElementInfo info) 
+std::unique_ptr<Element> Fractal<ElemType,SeedType,Arity>::grow_unbalanced(SeedType seed, ElementInfo info) 
 {
     if (info.level >= 0) {
-        
         // allocate memory for the root of the fractal subtree 
-        std::unique_ptr<Element> root_elem = std::make_unique<Element>(new ElemType(info));
-    
+        std::unique_ptr<Element> root_elem(new ElemType(info));
         // grow the root element
         root_elem->grow(seed);
-
         // grow child subtrees
         if ( (info.level-1 >= 0) && 
              (!root_elem->growth_stop_condition()) ) 
@@ -50,10 +47,9 @@ Fractal<ElemType,SeedType,Arity>::grow_unbalanced(SeedType seed, ElementInfo inf
 
                 SeedType child_seed = root_elem->spawn_child_seed(child_id);
         
-                root_elem->children.push_back(grow_unbalanced(child_seed, child_info);
+                root_elem->children.push_back(std::move(grow_unbalanced(child_seed, child_info)));
             }
         }
-
         return root_elem;
     } else {
         return std::make_unique<Element>(nullptr);
@@ -61,47 +57,51 @@ Fractal<ElemType,SeedType,Arity>::grow_unbalanced(SeedType seed, ElementInfo inf
 }
 
 template <typename ElemType, typename SeedType, int Arity>
-Fractal<ElemType,SeedType,Arity>::grow_balanced(SeedType seed, int depth) 
+void Fractal<ElemType,SeedType,Arity>::grow_balanced(SeedType seed, ElementInfo info) 
 {
-    // TODO
+    // TODO: implement balanced growth method
+    return;
 }
 
 template <typename ElemType, typename SeedType, int Arity>
 Fractal<ElemType,SeedType,Arity>::Element::Element(const ElementInfo& elem_info)
     : info(elem_info) {}
 
-template <typename ApplyFunc, typename ReturnType>
+template <typename ReturnType, typename ComputeFunc>
 template <typename ElemType, typename SeedType, int Arity>
-ReturnType Fractal<ElemType, SeedType, Arity>::apply(ApplyFunc apply_func) {
-    
+ReturnType Fractal<ElemType,SeedType,Arity>::compute(ComputeFunc compute_func) {
     if (type == Type::unbalanced) {
-        
-        if (root == nullptr) {
-            std::cerr << "Fractal::apply(): error: cannot apply the specified function to the NULL fractal root";
-            std::exit(EXIT_FAILURE);
-        }
-        
-        return root->template apply<ApplyFunc,ReturnType>(apply_func);
-    
+        return this->template compute_unbalanced<ReturnType,ComputeFunc>(compute_func);
     } else if (type == Type::balanced) {
-
-
+        return this->template compute_balanced<ReturnType,ComputeFunc>(compute_func);
     } else {
         std::cerr << "Fractal::grow():error: correct fractal type has not been specified!";
         std::exit(EXIT_FAILURE);
     }
 }
 
-
-template <typename ElemType, int ChildNum>
-template <typename ApplyFunc, typename ReturnType>
-ReturnType FractalElement<ElemType,ChildNum>::apply(ApplyFunc apply_func) {
-        
-    if (elem == nullptr) {
-        std::cerr << "Fractal::apply(): error: cannot apply the specified function to the NULL fractal element";
+template <typename ReturnType, typename ComputeFunc>
+template <typename ElemType, typename SeedType, int Arity>
+ReturnType Fractal<ElemType,SeedType,Arity>::compute_unbalanced(ComputeFunc compute_func) {
+    if (root == nullptr) {
+        std::cerr << "Fractal::apply(): error: cannot apply the specified function to the NULL fractal root";
         std::exit(EXIT_FAILURE);
     }
-    
+    return root->template compute<ReturnType,ComputeFunc>(compute_func);
+}
+
+template <typename ReturnType, typename ComputeFunc>
+template <typename ElemType, typename SeedType, int Arity>
+ReturnType Fractal<ElemType,SeedType,Arity>::compute_balanced(ComputeFunc compute_func) {
+    // TODO: implement balanced computation
+    ReturnType ret;
+    return ret;
+}
+
+template <typename ReturnType, typename ComputeFunc>
+template <typename ElemType, typename SeedType, int Arity>
+ReturnType Fractal<ElemType,SeedType,Arity>::Element::compute(ComputeFunc compute_func) {
+        
     std::vector<ReturnType> ret_vals;
 
     if (!children.empty()) {
@@ -132,50 +132,7 @@ ReturnType FractalElement<ElemType,ChildNum>::apply(ApplyFunc apply_func) {
         }
     }
         
-    return apply_func(elem, ret_vals);
-}
-
-template <typename ElemType, int ChildNum>
-template <typename WalkFunc, typename ReturnType>
-ReturnType FractalElement<ElemType,ChildNum>::walk(WalkFunc walk_func) {
-        
-    if (elem == nullptr) {
-        std::cerr << "Fractal::walk(): error: cannot apply the specified function to the NULL fractal element";
-        std::exit(EXIT_FAILURE);
-    }
-    
-    std::vector<ReturnType> ret_vals;
-
-    if (!children.empty()) {
-        if (info.depth < 1) {
-            // parallelize 
-            std::vector<ReturnType> tmp(info.children_num);
-            int threads_count = (info.children_num <= 4) ? info.children_num : 4;
-
-            #pragma omp parallel num_threads(threads_count)
-            {
-                #pragma omp for
-                for (int i = 0; i < info.children_num; i++) {
-
-                    int tid = omp_get_thread_num();
-                    printf("Walk omp_thread=%d\n", tid);
-
-                    tmp[i] = children[i]->template walk<WalkFunc,ReturnType>(walk_func);
-                }
-            }
-
-            for (int i = 0; i < info.children_num; i++) {
-                ret_vals.push_back(tmp[i]);
-            }
-
-        } else {
-            for (int i = 0; i < info.children_num; i++) {
-                ret_vals.push_back(children[i]->template walk<WalkFunc,ReturnType>(walk_func));
-            }
-        }
-    }
-
-    return walk_func(this, ret_vals);
+    return compute_func(this, ret_vals);
 }
 
 // end
