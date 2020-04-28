@@ -26,6 +26,11 @@ class Fractal {
             unbalanced
         };
 
+        enum class ImplType {
+            sequential = 0,
+            parallel
+        };
+
         // ElementInfo class 
         //
         // builds the location information of an element 
@@ -57,7 +62,7 @@ class Fractal {
             public:
 
                 // customization interface 
-                Element(Seed_t seed, ElementInfo info);
+                Element(ElementInfo info);
                 virtual ~Element() {}
 
                 virtual void grow(Seed_t seed);
@@ -80,6 +85,9 @@ class Fractal {
                 void set_fractal(Fractal* fractal);
                 void set_parent_element(Element* parent);
 
+                Type get_fractal_type() const { return fractal->get_type(); } 
+                ImplType get_fractal_impl_type() const { return fractal->get_impl_type(); }
+
             private:
 
                 // structural information
@@ -93,12 +101,16 @@ class Fractal {
 
         Fractal() 
             : depth(-1), top_level(-1), 
-              root(nullptr), type(Type::unbalanced) {}
+              root(nullptr), type(Type::unbalanced),
+              impl_type(ImplType::sequential) {}
         
-        ~Fractal() {} 
+        ~Fractal() {}
 
         void set_type(Type t) { type = t; }
         Type get_type() const { return type; }
+
+        void set_impl_type(ImplType t) { impl_type = t; }
+        ImplType get_impl_type() const { return impl_type; }
 
         void grow(SeedType seed, int depth);
 
@@ -106,8 +118,8 @@ class Fractal {
         ComputeType compute(ComputeFunc func);
        
         // helper functions
-        size_t get_elements_num(int depth);
-        int index_to_depth(int index);
+        //size_t get_elements_num(int depth);
+        //int index_to_depth(int index);
     
     private:
         
@@ -127,6 +139,8 @@ class Fractal {
     private:
 
         Type type;
+        ImplType impl_type;
+        
         int depth;
         int top_level;
         
