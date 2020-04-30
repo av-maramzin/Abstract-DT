@@ -26,7 +26,7 @@ void Fractal<ElemType,SeedType,Arity>::grow(SeedType seed, int depth)
 }
 
 template <typename ElemType, typename SeedType, int Arity>
-std::unique_ptr<Element> Fractal<ElemType,SeedType,Arity>::grow_unbalanced(SeedType seed, ElementInfo info) 
+std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<ElemType,SeedType,Arity>::grow_unbalanced(SeedType seed, ElementInfo info) 
 {
     if (info.level >= 0) {
         
@@ -66,7 +66,7 @@ std::unique_ptr<Element> Fractal<ElemType,SeedType,Arity>::grow_unbalanced(SeedT
         }
         return root_elem;
     } else {
-        return std::make_unique<Element>(nullptr);
+        return std::unique_ptr<Element>(nullptr);
     }
 }
 
@@ -81,8 +81,8 @@ template <typename ElemType, typename SeedType, int Arity>
 Fractal<ElemType,SeedType,Arity>::Element::Element(const ElementInfo& elem_info)
     : info(elem_info) {}
 
-template <typename ReturnType, typename ComputeFunc>
 template <typename ElemType, typename SeedType, int Arity>
+template <typename ReturnType, typename ComputeFunc>
 ReturnType Fractal<ElemType,SeedType,Arity>::compute(ComputeFunc compute_func) {
     if (type == Type::unbalanced) {
         return this->template compute_unbalanced<ReturnType,ComputeFunc>(compute_func);

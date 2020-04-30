@@ -1,15 +1,20 @@
 #ifndef ABSTRACT_FRACTAL_DYNAMIC_H
 #define ABSTRACT_FRACTAL_DYNAMIC_H
 
+#include <vector>
+#include <memory>
+#include <iostream>
+
 namespace abstract {
 
 template <typename ElemType, typename SeedType, int Arity> 
 class Fractal { 
 
     public:
-
-        Element_t = ElemType;
-        Seed_t = SeedType;
+        
+        using Fractal_t = Fractal<ElemType,SeedType,Arity>;
+        using Element_t = ElemType;
+        using Seed_t = SeedType;
         const int arity = Arity;
 
         // OPTIMIZATION HINT
@@ -62,7 +67,7 @@ class Fractal {
             public:
 
                 // customization interface 
-                Element(ElementInfo info);
+                Element(const ElementInfo& info);
                 virtual ~Element() {}
 
                 virtual void grow(Seed_t seed);
@@ -119,7 +124,7 @@ class Fractal {
        
         // helper functions
         //size_t get_elements_num(int depth);
-        //int index_to_depth(int index);
+        //int index_to_depth(int index);0
     
     private:
         
@@ -154,6 +159,8 @@ class Fractal {
         std::vector<std::unique_ptr<Element>> elements;
 };
 
-}
+#include "Fractal_dynamic.tpp"
+
+} // namespace abstract
 
 #endif // #ifndef ABSTRACT_FRACTAL_DYNAMIC_H
