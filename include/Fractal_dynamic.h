@@ -46,7 +46,11 @@ class Fractal {
             public:
                 
                 ElementInfo() 
-                    : depth(-1), level(-1) {} 
+                    : depth(-1), level(-1), index(-1) {} 
+
+                ElementInfo(const ElementInfo& ref) 
+                    : depth(ref.depth), level(ref.level), index(ref.index) {} 
+
 
                 void check() const {
                     if (level == 0) {
@@ -57,6 +61,7 @@ class Fractal {
 
                 int depth;
                 int level;
+                int index;
                 static const int children_num = Arity;
         };
        
@@ -87,11 +92,18 @@ class Fractal {
             private:
 
                 // specify the fractal this element belongs to
-                void set_fractal(Fractal* fractal);
-                void set_parent_element(Element* parent);
+                void set_fractal(Fractal* f) { fractal = f; }
+                // link the element with its parent element
+                void set_parent_element(Element* p) { parent = p; }
 
-                Type get_fractal_type() const { return fractal->get_type(); } 
-                ImplType get_fractal_impl_type() const { return fractal->get_impl_type(); }
+                // query the types of the fractal this element belongs to
+                Type get_fractal_type() const { 
+                    return (fractal != nullptr) ? fractal->get_type() : Type::unbalanced; 
+                }
+
+                ImplType get_fractal_impl_type() const {
+                    return (fractal != nullptr) ? fractal->get_impl_type() : ImplType::sequential;
+                }
 
             private:
 
@@ -101,14 +113,12 @@ class Fractal {
                 Fractal* fractal;
                 // structural links 
                 Element* parent;
+                // unbalanced fractal implementation
+                // owns its children objects 
                 std::vector<std::unique_ptr<Element>> children;
         };
 
-        Fractal() 
-            : depth(-1), top_level(-1), 
-              root(nullptr), type(Type::unbalanced),
-              impl_type(ImplType::sequential) {}
-        
+        Fractal(); 
         ~Fractal() {}
 
         void set_type(Type t) { type = t; }
@@ -117,7 +127,7 @@ class Fractal {
         void set_impl_type(ImplType t) { impl_type = t; }
         ImplType get_impl_type() const { return impl_type; }
 
-        void grow(SeedType seed, int depth);
+        void grow(int depth, SeedType seed);
 
         template <typename ComputeType, typename ComputeFunc>
         ComputeType compute(ComputeFunc func);

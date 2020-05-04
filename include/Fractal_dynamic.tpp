@@ -2,7 +2,19 @@
 //
 
 template <typename ElemType, typename SeedType, int Arity>
-void Fractal<ElemType,SeedType,Arity>::grow(SeedType seed, int depth) 
+Fractal<ElemType,SeedType,Arity>::Fractal()
+    : depth(-1), top_level(-1), root(nullptr), 
+      type(Type::unbalanced), impl_type(ImplType::sequential) {}
+ 
+template <typename ElemType, typename SeedType, int Arity>
+Fractal<ElemType,SeedType,Arity>::~Fractal() {}
+
+template <typename ElemType, typename SeedType, int Arity>
+Fractal<ElemType,SeedType,Arity>::Element::Element(const ElementInfo& elem_info)
+    : info(elem_info), fractal(nullptr), parent(nullptr), children() {} 
+
+template <typename ElemType, typename SeedType, int Arity>
+void Fractal<ElemType,SeedType,Arity>::grow(int depth, SeedType seed) 
 {
     this->top_level = depth;
     this->depth = depth;
@@ -17,7 +29,7 @@ void Fractal<ElemType,SeedType,Arity>::grow(SeedType seed, int depth)
         if (type == Type::unbalanced) {
             root = grow_unbalanced(seed, info);
         } else if (type == Type::balanced) {
-            grow_balanced(seed, depth);
+            grow_balanced(seed, info);
         } else {
             std::cerr << "Fractal::grow():error: correct fractal type has not been specified!";
             std::exit(EXIT_FAILURE);
@@ -64,7 +76,9 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                 root_elem->children.push_back(child_elem);
             }
         }
+        
         return root_elem;
+    
     } else {
         return std::unique_ptr<Element>(nullptr);
     }
@@ -76,10 +90,6 @@ void Fractal<ElemType,SeedType,Arity>::grow_balanced(SeedType seed, ElementInfo 
     // TODO: implement balanced growth method
     return;
 }
-
-template <typename ElemType, typename SeedType, int Arity>
-Fractal<ElemType,SeedType,Arity>::Element::Element(const ElementInfo& elem_info)
-    : info(elem_info) {}
 
 template <typename ElemType, typename SeedType, int Arity>
 template <typename ReturnType, typename ComputeFunc>
