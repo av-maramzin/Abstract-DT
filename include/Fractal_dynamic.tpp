@@ -62,14 +62,13 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                 ElementInfo child_info;
                 child_info.level = info.level-1;
                 child_info.depth = info.depth+1;
-                child_info.children_num = Arity;
                 // seed to grow the child element
                 SeedType child_seed = root_elem->spawn_child_seed(child_id);
                 
                 std::unique_ptr<Element> child_elem = std::move(grow_unbalanced(child_seed, child_info));
-                child_elem->set_parent_element(root_elem->get_ptr());
+                child_elem->set_parent_element(root_elem.get());
 
-                root_elem->children.push_back(child_elem);
+                root_elem->children.push_back(std::move(child_elem));
             }
         }
         
@@ -160,7 +159,7 @@ ReturnType Fractal<ElemType,SeedType,Arity>::Element::compute(ComputeFunc comput
             }
         }
        
-        return compute_func(this, ret_vals);
+        return compute_func(static_cast<ElemType*>(this), ret_vals);
 
     } else { // balanced fractal computation implementation
         ReturnType ret;

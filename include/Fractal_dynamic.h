@@ -134,7 +134,7 @@ class Fractal<ElemType,SeedType,Arity>::Element {
         Element(const ElementInfo& info);
         virtual ~Element() {}
 
-        virtual void grow(Seed_t seed);
+        virtual void grow(Seed_t seed) = 0;
         virtual bool growth_stop_condition() { return false; }; // no growth stop condition by default
         virtual Seed_t spawn_child_seed(int child_id) {
             Seed_t ret;
