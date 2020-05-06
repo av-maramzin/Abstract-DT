@@ -7,9 +7,6 @@ Fractal<ElemType,SeedType,Arity>::Fractal()
       type(Type::unbalanced), impl_type(ImplType::sequential) {}
  
 template <typename ElemType, typename SeedType, int Arity>
-Fractal<ElemType,SeedType,Arity>::~Fractal() {}
-
-template <typename ElemType, typename SeedType, int Arity>
 Fractal<ElemType,SeedType,Arity>::Element::Element(const ElementInfo& elem_info)
     : info(elem_info), fractal(nullptr), parent(nullptr), children() {} 
 
@@ -24,7 +21,6 @@ void Fractal<ElemType,SeedType,Arity>::grow(int depth, SeedType seed)
         ElementInfo info;
         info.level = this->top_level;
         info.depth = 0;
-        info.children_num = Arity;
 
         if (type == Type::unbalanced) {
             root = grow_unbalanced(seed, info);
@@ -104,8 +100,8 @@ ReturnType Fractal<ElemType,SeedType,Arity>::compute(ComputeFunc compute_func) {
     }
 }
 
-template <typename ReturnType, typename ComputeFunc>
 template <typename ElemType, typename SeedType, int Arity>
+template <typename ReturnType, typename ComputeFunc>
 ReturnType Fractal<ElemType,SeedType,Arity>::compute_unbalanced(ComputeFunc compute_func) {
     if (root == nullptr) {
         std::cerr << "Fractal::apply(): error: cannot apply the specified function to the NULL fractal root";
@@ -114,16 +110,16 @@ ReturnType Fractal<ElemType,SeedType,Arity>::compute_unbalanced(ComputeFunc comp
     return root->template compute<ReturnType,ComputeFunc>(compute_func);
 }
 
-template <typename ReturnType, typename ComputeFunc>
 template <typename ElemType, typename SeedType, int Arity>
+template <typename ReturnType, typename ComputeFunc>
 ReturnType Fractal<ElemType,SeedType,Arity>::compute_balanced(ComputeFunc compute_func) {
     // TODO: implement balanced computation
     ReturnType ret;
     return ret;
 }
 
-template <typename ReturnType, typename ComputeFunc>
 template <typename ElemType, typename SeedType, int Arity>
+template <typename ReturnType, typename ComputeFunc>
 ReturnType Fractal<ElemType,SeedType,Arity>::Element::compute(ComputeFunc compute_func) {
     
     if (fractal->get_type() == Fractal_t::Type::unbalanced) {
