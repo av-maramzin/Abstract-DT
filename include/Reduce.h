@@ -15,6 +15,11 @@ class Reduce
         using Element_t = ElemType;
         using Seed_t = SeedType;
 
+        enum class ImplType {
+            sequential = 0,
+            parallel
+        };
+
         // ElementInfo class 
         //
         // builds the location information of an element 
@@ -56,8 +61,12 @@ class Reduce
         template<typename ComputeType>
         ComputeType compute(ComputeFunction<ComputeType>& func);
 
-    private:
+        void set_impl_type(ImplType t) { impl_type = t; }
+        ImplType get_impl_type() const { return impl_type; }
 
+    private:
+        
+        ImplType impl_type;
         int width;
         std::vector<std::unique_ptr<Element>> elements;
 };
@@ -87,7 +96,7 @@ class Reduce<ElemType,SeedType>::Element {
         Element(const ElementInfo& info);
         virtual ~Element() {}
 
-        virtual void grow(size_t width, SeedType seed) = 0;
+        virtual void grow(SeedType seed) = 0;
 
     protected:
 
@@ -111,13 +120,34 @@ template <typename RetType>
 class Reduce<ElemType,SeedType>::ComputeFunction {
     
     public:
-        
-        // interface compute functions used as a parameter 
-        // functions of the Fold::compute() are supposed to override
-        virtual RetType operator()(ElemType& element, RetType cumulative) {
+       
+        //
+        // Users of the Reduce class are supposed to override two
+        // customization function call operators: one for instructions
+        // on how to reduce the data from a single Reduce element, one
+        // for instructions on how to combine all reduced values into
+        // a final return value
+        //
+
+        //
+        // Funtion to specify how to reduce the data from a single element
+        //
+        virtual RetType operator()(ElemType& element) {
             // stub version does not do any changes to the element
-            // and just passes along its incoming cumulative value
-            return cumulative;
+            // and just passes out its default value
+            RetType ret;
+            return ret;
+        }
+
+        //
+        // Function to specify how to combine all reduced values
+        //
+        virtual RetType operator()(const std::vector<RetType>& rets) {
+            RetType ret;
+            for (auto it = rets.begin(); it != rets.end(); it++) {
+                ret += *it;                    
+            }
+            return ret;
         }
 };
 
@@ -136,17 +166,19 @@ void Reduce<ElemType,SeedType>::grow(size_t width, SeedType seed) {
     
     // the width of the reduction
     this->width = width;
-    
+    // the vector container to hold all reduction elements
+    elements.reserve(width);
+
     for (size_t i=0; i<width; i++) {
-        // information 
+        // position information 
         ElementInfo info;
         info.index = i;
-        // allocate memory and set 
+        // allocate memory and set the position
         std::unique_ptr<Element> elem(new ElemType(info));
         // grow custom part of the element
         elem->grow(seed);
-
-        elements.push_back(std::move(elem));
+        // move the grown element into its position in the reduction
+        elements[i] = std::move(elem);
     }
 }
 
@@ -166,11 +198,25 @@ void Reduce<ComputeType,ElemType>::shrink(size_t new_width) {
 template <typename ElemType, typename SeedType>
 template <typename ComputeType>
 ComputeType Reduce<ElemType,SeedType>::compute(ComputeFunction<ComputeType>& compute_func) {
-    ComputeType ret;
-    for (size_t i=0; i<width; i++) {
-        ret += compute_func(*elements[i]);
+    // compute reduced values from all 
+    // the elements of the reduce framework
+    // and store them in indexed vector
+    std::vector<ComputeType> rets;
+    rets.reserve(width);
+    // fill the vector with computed values 
+    // reduced from all the elements
+    if (this->get_impl_type() == ImplType::sequential) {
+        for (size_t i=0; i<width; i++) {
+            rets[i] = compute_func(*elements[i]);
+        }
+    } else if (this->get_impl_type() == ImplType::parallel) {
+        #pragma omp parallel for private(i) shared(rets,elements)
+        for (size_t i=0; i<width; i++) {
+            rets[i] = compute_func(*elements[i]);
+        }
     }
-    return ret;
+    // call a user-defined function for a final reduction
+    return compute_func(rets);
 }
 
 }

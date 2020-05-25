@@ -44,8 +44,23 @@ class Fractal {
         // withing the fractal into the element
         //
         struct ElementInfo;
-       
+
+        // Element class 
+        //
+        // Users of the Fractal are supposed to derive their 
+        // element types from the base element class below and
+        // override its customization API methods
+        //
         class Element;
+
+        // ComputeFunction class 
+        //
+        // If a user wants to apply a function to the Fractal, that
+        // function is supposed to be derived from the base class
+        // below, which frames the API of the application function 
+        //
+        template <typename ComputeType>
+        class ComputeFunction;
 
         Fractal(); 
         ~Fractal() {}
@@ -56,10 +71,10 @@ class Fractal {
         void set_impl_type(ImplType t) { impl_type = t; }
         ImplType get_impl_type() const { return impl_type; }
 
-        void grow(int depth, SeedType seed);
+        Fractal_t& grow(int depth, SeedType seed);
 
-        template <typename ComputeType, typename ComputeFunc>
-        ComputeType compute(ComputeFunc func);
+        template <typename ComputeType>
+        ComputeType compute(ComputeFunction<ComputeType>& func);
        
         // helper functions
         //size_t get_elements_num(int depth);
@@ -69,11 +84,11 @@ class Fractal {
         
         // private framework computation methods
         // (implement compute() method)
-        template <typename ComputeType, typename ComputeFunc>
-        ComputeType compute_unbalanced(ComputeFunc compute_func);
+        template <typename ComputeType>
+        ComputeType compute_unbalanced(ComputeFunction<ComputeType>& compute_func);
         
-        template <typename ComputeType, typename ComputeFunc>
-        ComputeType compute_balanced(ComputeFunc compute_func);
+        template <typename ComputeType>
+        ComputeType compute_balanced(ComputeFunction<ComputeType>& compute_func);
 
         // private framework construction methods
         // (implement grow() method)
@@ -141,8 +156,8 @@ class Fractal<ElemType,SeedType,Arity>::Element {
             return ret;
         }
 
-        template <typename ComputeType, typename ComputeFunc>
-        ComputeType compute(ComputeFunc func);
+        template <typename ComputeType>
+        ComputeType compute(ComputeFunction<ComputeType>& func);
 
     protected:
 
@@ -175,6 +190,18 @@ class Fractal<ElemType,SeedType,Arity>::Element {
         // unbalanced fractal implementation
         // owns its children objects 
         std::vector<std::unique_ptr<Element>> children;
+};
+
+template <typename ElemType, typename SeedType, int Arity> 
+template <typename ComputeType>
+class Fractal<ElemType,SeedType,Arity>::ComputeFunction { 
+    
+    public:
+        
+        using Compute_t = ComputeType;
+
+        virtual Compute_t operator()(ElemType& element, 
+                                     const std::vector<Compute_t>& child_rets) = 0;
 };
 
 #include "Fractal_dynamic.tpp"
