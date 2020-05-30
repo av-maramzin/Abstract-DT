@@ -7,13 +7,14 @@
 
 namespace abstract {
 
-template <typename ElemType, typename SeedType>
+template <typename ElemType, typename SeedType, typename InjectType>
 class Reduce
 {
     public:
 
         using Element_t = ElemType;
         using Seed_t = SeedType;
+        using Inject_t = InjectType;
 
         enum class ImplType {
             sequential = 0,
@@ -50,9 +51,17 @@ class Reduce
         ~Reduce();
        
         // global interface to the Reduce class
-        Reduce<ElemType,SeedType>& grow(size_t width, SeedType seed);
-        Reduce<ElemType,SeedType>& shrink(size_t width);
-        
+        Reduce<ElemType,SeedType,InjectType>& grow(size_t width, SeedType seed);
+        //Reduce<ElemType,SeedType>& shrink(size_t width);
+       
+        // 
+        // inject()
+        //
+        // injects the data into all Reduce elements. Injected data 
+        // can be further used inside compute method()
+        //
+        Reduce<ElemType,SeedType,InjectType>& inject(const InjectType data);
+
         //
         // main compute() interface
         //
@@ -71,8 +80,8 @@ class Reduce
         std::vector<std::unique_ptr<Element>> elements;
 };
 
-template <typename ElemType, typename SeedType> 
-struct Reduce<ElemType,SeedType>::ElementInfo { 
+template <typename ElemType, typename SeedType, typename InjectType> 
+struct Reduce<ElemType,SeedType,InjectType>::ElementInfo { 
     
     public:
         
@@ -85,10 +94,10 @@ struct Reduce<ElemType,SeedType>::ElementInfo {
         int index;
 };
 
-template <typename ElemType, typename SeedType> 
-class Reduce<ElemType,SeedType>::Element { 
+template <typename ElemType, typename SeedType, typename InjectType> 
+class Reduce<ElemType,SeedType,InjectType>::Element { 
 
-    friend class Reduce<ElemType,SeedType>;
+    friend class Reduce<ElemType,SeedType,InjectType>;
 
     public:
 
@@ -98,28 +107,39 @@ class Reduce<ElemType,SeedType>::Element {
 
         virtual void grow(SeedType seed) = 0;
 
-    protected:
+        virtual InjectType inject(const InjectType data) {
+            injected_data = data;   
+        }
+
+        InjectType get_injected_data() { return injected_data; }
+
+        void plant_seed(SeedType s) { seed = s; }
+        const SeedType extract_seed() const { return seed; }
 
         const ElementInfo& element_info() const { return info; }
 
     private:
         // specify the reduce object this element belongs to
-        void set_reduce(Reduce<ElemType,SeedType>* r) { reduce = r; }
+        void set_reduce(Reduce<ElemType,SeedType,InjectType>* r) { reduce = r; }
 
     private:
+        // the seed that has been used to grow the element
+        InjectType injected_data;
         // the seed that has been used to grow the element
         SeedType seed;
         // structural information
         ElementInfo info;
         // reduce the element belongs to
-        Reduce<ElemType,SeedType>* reduce;
+        Reduce<ElemType,SeedType,InjectType>* reduce;
 };
 
-template <typename ElemType, typename SeedType>
+template <typename ElemType, typename SeedType, typename InjectType>
 template <typename RetType>
-class Reduce<ElemType,SeedType>::ComputeFunction {
+class Reduce<ElemType,SeedType,InjectType>::ComputeFunction {
     
     public:
+        
+        using Compute_t = ComputeType;
        
         //
         // Users of the Reduce class are supposed to override two
@@ -151,18 +171,18 @@ class Reduce<ElemType,SeedType>::ComputeFunction {
         }
 };
 
-template <typename ElemType, typename SeedType>
-Reduce<ElemType,SeedType>::Reduce()
+template <typename ElemType, typename SeedType, typename InjectType>
+Reduce<ElemType,SeedType,InjectType>::Reduce()
     : elements(), width(-1) {}
 
-template <typename ElemType, typename SeedType>
-Reduce<ElemType,SeedType>::~Reduce() {
+template <typename ElemType, typename SeedType, typename InjectType>
+Reduce<ElemType,SeedType,InjectType>::~Reduce() {
     width = -1;
     elements.clear();
 }
 
-template <typename ElemType, typename SeedType>
-void Reduce<ElemType,SeedType>::grow(size_t width, SeedType seed) {
+template <typename ElemType, typename SeedType, typename InjectType>
+void Reduce<ElemType,SeedType,InjectType>::grow(size_t width, SeedType seed) {
     
     // the width of the reduction
     this->width = width;
@@ -182,6 +202,14 @@ void Reduce<ElemType,SeedType>::grow(size_t width, SeedType seed) {
     }
 }
 
+template <typename ElemType, typename SeedType, typename InjectType>
+void Reduce<ElemType,SeedType,InjectType>::inject(InjectType data) {
+    // propagate the data to all reduce elements 
+    for (size_t i=0; i<width; i++) {
+        elements[i]->inject(data);
+    }
+}
+
 /*
 template <typename ComputeType, typename ElemType>
 void Reduce<ComputeType,ElemType>::shrink(size_t new_width) {
@@ -195,9 +223,9 @@ void Reduce<ComputeType,ElemType>::shrink(size_t new_width) {
     }
 }*/
 
-template <typename ElemType, typename SeedType>
+template <typename ElemType, typename SeedType, typename InjectType>
 template <typename ComputeType>
-ComputeType Reduce<ElemType,SeedType>::compute(ComputeFunction<ComputeType>& compute_func) {
+ComputeType Reduce<ElemType,SeedType,InjectType>::compute(ComputeFunction<ComputeType>& compute_func) {
     // compute reduced values from all 
     // the elements of the reduce framework
     // and store them in indexed vector

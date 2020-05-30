@@ -103,14 +103,12 @@ class Fold::Element {
 
         InjectType inject(const InjectType) = 0;
 
-    protected:
-
         void plant_seed(SeedType s) { seed = s; }
         const SeedType extract_seed() const { return seed; }
 
     private:
-        // 
-
+        // data injected into the element 
+        InjectType injected_data;
         // seed value the element has been grown from
         SeedType seed;
         // depth of the element withing the fold
@@ -167,6 +165,8 @@ template <typename RetType>
 class Fold<ElemType,SeedType,InjectType>::ComputeFunction {
     
     public:
+        
+        using Compute_t = ComputeType;
         
         // interface compute functions used as a parameter 
         // functions of the Fold::compute() are supposed to override
