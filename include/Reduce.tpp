@@ -107,7 +107,7 @@ class Reduce<ElemType,SeedType,InjectType>::Element {
 
         virtual void grow(SeedType seed) = 0;
 
-        virtual void inject(const InjectType data) {
+        virtual InjectType inject(const InjectType data) {
             injected_data = data;   
         }
 
@@ -173,16 +173,6 @@ class Reduce<ElemType,SeedType,InjectType>::ComputeFunction {
 
 template <typename ElemType, typename SeedType, typename InjectType>
 Reduce<ElemType,SeedType,InjectType>::Reduce()
-    : elements(), width(-1) {}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Reduce<ElemType,SeedType,InjectType>::~Reduce() {
-    width = -1;
-    elements.clear();
-}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Reduce<ElemType,SeedType,InjectType>::Element::Element()
     : elements(), width(-1) {}
 
 template <typename ElemType, typename SeedType, typename InjectType>
