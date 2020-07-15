@@ -51,6 +51,7 @@ class Reduce
         ~Reduce();
        
         // global interface to the Reduce class
+        Reduce<ElemType,SeedType,InjectType>& grow(size_t width);
         Reduce<ElemType,SeedType,InjectType>& grow(size_t width, SeedType seed);
         //Reduce<ElemType,SeedType>& shrink(size_t width);
        
@@ -68,7 +69,7 @@ class Reduce
         // Takes custom compute function object as a parameter
         //
         template<typename ComputeType>
-        ComputeType compute(ComputeFunction<ComputeType>& func);
+        ComputeType compute(Reduce<ElemType,SeedType,InjectType>::ComputeFunction<ComputeType>& func);
 
         void set_impl_type(ImplType t) { impl_type = t; }
         ImplType get_impl_type() const { return impl_type; }
@@ -103,9 +104,10 @@ class Reduce<ElemType,SeedType,InjectType>::Element {
 
         // customization interface 
         Element(const ElementInfo& info);
-        virtual ~Element() {}
+        virtual ~Element();
 
-        virtual void grow(SeedType seed) = 0;
+        virtual void grow() {}
+        virtual void grow(SeedType seed) {}
 
         virtual void inject(const InjectType data) {
             injected_data = data;   
@@ -134,7 +136,7 @@ class Reduce<ElemType,SeedType,InjectType>::Element {
 };
 
 template <typename ElemType, typename SeedType, typename InjectType>
-template <typename RetType>
+template <typename ComputeType>
 class Reduce<ElemType,SeedType,InjectType>::ComputeFunction {
     
     public:
@@ -152,18 +154,18 @@ class Reduce<ElemType,SeedType,InjectType>::ComputeFunction {
         //
         // Funtion to specify how to reduce the data from a single element
         //
-        virtual RetType operator()(ElemType& element) {
+        virtual ComputeType operator()(ElemType& element) {
             // stub version does not do any changes to the element
             // and just passes out its default value
-            RetType ret;
+            ComputeType ret;
             return ret;
         }
 
         //
         // Function to specify how to combine all reduced values
         //
-        virtual RetType operator()(const std::vector<RetType>& rets) {
-            RetType ret;
+        virtual ComputeType operator()(std::vector<ComputeType>& rets) {
+            ComputeType ret;
             for (auto it = rets.begin(); it != rets.end(); it++) {
                 ret += *it;                    
             }
@@ -171,91 +173,7 @@ class Reduce<ElemType,SeedType,InjectType>::ComputeFunction {
         }
 };
 
-template <typename ElemType, typename SeedType, typename InjectType>
-Reduce<ElemType,SeedType,InjectType>::Reduce()
-    : elements(), width(-1) {}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Reduce<ElemType,SeedType,InjectType>::~Reduce() {
-    width = -1;
-    elements.clear();
-}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Reduce<ElemType,SeedType,InjectType>::Element::Element()
-    : elements(), width(-1) {}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Reduce<ElemType,SeedType,InjectType>::~Reduce() {
-    width = -1;
-    elements.clear();
-}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-void Reduce<ElemType,SeedType,InjectType>::grow(size_t width, SeedType seed) {
-    
-    // the width of the reduction
-    this->width = width;
-    // the vector container to hold all reduction elements
-    elements.reserve(width);
-
-    for (size_t i=0; i<width; i++) {
-        // position information 
-        ElementInfo info;
-        info.index = i;
-        // allocate memory and set the position
-        std::unique_ptr<Element> elem(new ElemType(info));
-        // grow custom part of the element
-        elem->grow(seed);
-        // move the grown element into its position in the reduction
-        elements[i] = std::move(elem);
-    }
-}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-void Reduce<ElemType,SeedType,InjectType>::inject(InjectType data) {
-    // propagate the data to all reduce elements 
-    for (size_t i=0; i<width; i++) {
-        elements[i]->inject(data);
-    }
-}
-
-/*
-template <typename ComputeType, typename ElemType>
-void Reduce<ComputeType,ElemType>::shrink(size_t new_width) {
-    if ((width > new_width) && (new_width >= 0)) {
-        while (width > new_width) {
-            elements.pop_back();
-            width--;
-        }
-    } else {
-        std::cerr << "Fold<>::shrink(new_depth): invalid new_depth argument value" << std::endl;
-    }
-}*/
-
-template <typename ElemType, typename SeedType, typename InjectType>
-template <typename ComputeType>
-ComputeType Reduce<ElemType,SeedType,InjectType>::compute(ComputeFunction<ComputeType>& compute_func) {
-    // compute reduced values from all 
-    // the elements of the reduce framework
-    // and store them in indexed vector
-    std::vector<ComputeType> rets;
-    rets.reserve(width);
-    // fill the vector with computed values 
-    // reduced from all the elements
-    if (this->get_impl_type() == ImplType::sequential) {
-        for (size_t i=0; i<width; i++) {
-            rets[i] = compute_func(*elements[i]);
-        }
-    } else if (this->get_impl_type() == ImplType::parallel) {
-        #pragma omp parallel for private(i) shared(rets,elements)
-        for (size_t i=0; i<width; i++) {
-            rets[i] = compute_func(*elements[i]);
-        }
-    }
-    // call a user-defined function for a final reduction
-    return compute_func(rets);
-}
+#include "Reduce.tpp"
 
 }
 

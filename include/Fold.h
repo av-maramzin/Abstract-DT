@@ -46,8 +46,9 @@ class Fold {
         ~Fold();
        
         // Global interface to the Fold class
+        Fold<ElemType,SeedType,InjectType>& grow(int depth);
         Fold<ElemType,SeedType,InjectType>& grow(int depth, SeedType seed);
-        Fold<ElemType,SeedType,InjectType>& shrink(int depth);
+        //Fold<ElemType,SeedType,InjectType>& shrink(int depth);
         
         // 
         // inject()
@@ -64,12 +65,17 @@ class Fold {
         // Takes custom compute function object as a parameter
         //
         template<typename ComputeType>
-        ComputeType compute(ComputeFunction<ComputeType>& func);
+        ComputeType compute(Fold<ElemType,SeedType,InjectType>::ComputeFunction<ComputeType>& func);
+
+        void set_debug(bool flag) { debug = flag; } 
+        bool is_debug() { return debug; } 
 
     private:
-        
+
         int depth;
         std::vector<std::unique_ptr<Element>> elements;
+
+        bool debug;
 };
 
 template <typename ElemType, typename SeedType, typename InjectType> 
@@ -104,7 +110,7 @@ class Fold<ElemType,SeedType,InjectType>::Element {
 
         // customization interface 
         Element(const ElementInfo& info);
-        virtual ~Element() {}
+        virtual ~Element();
 
         // seedless growth
         virtual void grow() {}
@@ -124,7 +130,10 @@ class Fold<ElemType,SeedType,InjectType>::Element {
         const ElementInfo& element_info() const { return info; }
 
         void plant_seed(SeedType s) { seed = s; }
-        const SeedType extract_seed() const { return seed; }
+        SeedType get_seed() const { return seed; }
+
+        void plant_injected_data(const InjectType data) { injected_data = data; }
+        InjectType get_injected_data() const { return injected_data; }
 
     private:
 
@@ -156,7 +165,7 @@ class Fold<ElemType,SeedType,InjectType>::ComputeFunction {
     
     public:
         
-        using Compute_t = ComputeType;
+        using Compute_t = RetType;
         
         // interface compute functions used as a parameter 
         // functions of the Fold::compute() are supposed to override
@@ -167,106 +176,7 @@ class Fold<ElemType,SeedType,InjectType>::ComputeFunction {
         }
 };
 
-template <typename ElemType, typename SeedType, typename InjectType>
-Fold<ElemType,SeedType,InjectType>::Fold()
-    : elements(), depth(-1) {}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Fold<ElemType,SeedType,InjectType>::~Fold() {
-    depth = -1;
-    elements.clear();
-}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Fold<ElemType,SeedType,InjectType>::Element::Element(const Fold<ElemType,SeedType,InjectType>::ElementInfo& info) 
-    info(info), seed(), injected_data(), fold(nullptr), parent(nullptr), child(nullptr) {} 
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Fold<ElemType,SeedType,InjectType>::Element::~Element() {
-    fold = nullptr;
-    parent = nullptr;
-    child = nullptr;
-}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Fold<ElemType,SeedType,InjectType>& Fold<ElemType,SeedType,InjectType>::grow(int depth) {
-    // reserve required space        
-    elements.reserve(depth);
-    // fill the fold with new elements
-    for (size_t i=0; i<=depth; i++) {
-        // set element's structural info
-        ElementInfo info;
-        info.depth = i;
-        info.level = depth-i;
-        info.index = i;
-        // allocate memory for the element
-        std::unique_ptr<Element> elem(new ElemType(info));
-        // grow custom element part
-        elem->grow();
-        // put the element into the fold 
-        elements[i] = std::move(elem);
-    }
-    // return grown fold
-    return (*this);
-}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Fold<ElemType,SeedType,InjectType>& Fold<ElemType,SeedType,InjectType>::grow(int depth, SeedType seed) {
-    // reserve required space        
-    elements.reserve(depth);
-    // fill the fold with new elements
-    SeedType next_seed = seed; 
-    for (size_t i=0; i<=depth; i++) {
-        // set element's structural info
-        ElementInfo info;
-        info.depth = i;
-        info.level = depth-i;
-        info.index = i;
-        // allocate memory for the element
-        std::unique_ptr<Element> elem(new ElemType(info));
-        // grow custom element part
-        elem->grow(next_seed);
-        // spawn child seed for the next element
-        next_seed = elem->spawn_child_seed();
-        // put the element into the fold 
-        elements[i] = std::move(elem);
-    }
-    // return grown fold
-    return (*this);
-}
-
-/*
-template <typename ElemType, typename ComputeType, typename SeedType>
-void Fold<ElemType,ComputeType,SeedType>::shrink(int new_depth) {
-
-    if ((depth >= new_depth) && (new_depth >= 0)) {
-        while (depth > new_depth) {
-            elements.pop_back();
-            depth--;
-        }
-    } else {
-        std::cerr << "Fold<>::shrink(new_depth): invalid new_depth argument value" << std::endl;
-    }
-}*/
-
-template <typename ElemType, typename SeedType, typename InjectType>
-template <typename ComputeType>
-ComputeType Fold<ElemType,SeedType,InjectType>::compute(const ComputeFunction<ComputeType>& compute_func) {
-    ComputeType ret;
-    for (size_t i = depth; i >= 0; i--) {
-        ret = compute_func(*elements[i], ret);
-    }
-    return ret;
-}
-
-template <typename ElemType, typename SeedType, typename InjectType>
-Fold<ElemType,SeedType,InjectType>& Fold<ElemType,SeedType,InjectType>::inject(const InjectType inject_data) {
-    InjectType inj = inject_data;
-    for (size_t i=0; i<=depth; i++) {
-        inj = elements[i]->inject(inj);
-    }
-    return (*this);
-}
+#include "Fold.tpp"
 
 }
 
