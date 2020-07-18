@@ -87,7 +87,7 @@ template <typename ElemType, typename SeedType, typename InjectType>
 template <typename ComputeType>
 ComputeType Fold<ElemType,SeedType,InjectType>::compute(Fold<ElemType,SeedType,InjectType>::ComputeFunction<ComputeType>& compute_func) {
     ComputeType ret;
-    for (size_t i = depth; i >= 0; i--) {
+    for (int i = depth; i >= 0; i--) {
         ret = compute_func(*static_cast<ElemType*>(elements[i].get()), ret);
     }
     return ret;
