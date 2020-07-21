@@ -22,7 +22,7 @@ Reduce<ElemType,SeedType,InjectType>& Reduce<ElemType,SeedType,InjectType>::grow
     // the width of the reduction
     this->width = width;
     // the vector container to hold all reduction elements
-    elements.reserve(width);
+    //elements.reserve(width);
 
     for (size_t i=0; i<width; i++) {
         // position information 
@@ -33,7 +33,7 @@ Reduce<ElemType,SeedType,InjectType>& Reduce<ElemType,SeedType,InjectType>::grow
         // grow custom part of the element
         elem->grow();
         // move the grown element into its position in the reduction
-        elements[i] = std::move(elem);
+        elements.push_back(std::move(elem));
     }
 }
 
@@ -43,7 +43,7 @@ Reduce<ElemType,SeedType,InjectType>& Reduce<ElemType,SeedType,InjectType>::grow
     // the width of the reduction
     this->width = width;
     // the vector container to hold all reduction elements
-    elements.reserve(width);
+    //elements.reserve(width);
 
     for (size_t i=0; i<width; i++) {
         // position information 
@@ -54,7 +54,7 @@ Reduce<ElemType,SeedType,InjectType>& Reduce<ElemType,SeedType,InjectType>::grow
         // grow custom part of the element
         elem->grow(seed);
         // move the grown element into its position in the reduction
-        elements[i] = std::move(elem);
+        elements.push_back(std::move(elem));
     }
 }
 
