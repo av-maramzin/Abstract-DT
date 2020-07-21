@@ -1,234 +1,141 @@
+#ifndef FRACTAL_H
+#define FRACTAL_H
 
-//
+#include <cmath>
 
-template <typename ElemType, int ChildNum>
-template <typename GrowthFuncType, typename GrowthSeedType, typename NextGrowthSeedFuncType, typename GrowthStopFuncType>
-void Fractal<ElemType,ChildNum>::grow(int depth, 
-                                        GrowthFuncType growth_func,
-                                        GrowthSeedType growth_func_param, 
-                                        NextGrowthSeedFuncType next_growth_seed_func,
-                                        GrowthStopFuncType growth_stop_func)
-{
-    this->top_level = depth;
-    this->depth = depth;
-   
-    // root element to be created
-    FractalElementInfo info;
-    info.level = this->top_level;
-    info.depth = 0;
-    info.children_num = this->children_num;
+#include <iostream>
+#include <omp.h>
 
-    if (this->depth >= 0) {
-        root = new FractalElement<ElemType,ChildNum>(info, // current fractal element info
-                                                     this, // fractal the element belongs to
-                                                     this->depth, // fractal depth
-                                                     nullptr, // parent fractal element (root does not have a parent pointer)
-                                                     growth_func, // function to grow elements
-                                                     growth_func_param, // data to grow elements
-                                                     next_growth_seed_func, // generate next data for grow function
-                                                     growth_stop_func); // check growth stop condition
-    }
-}
+#include "Sequence.h"
+
+namespace abstract {
 
 template <typename ElemType, int ChildNum>
-template <typename ApplyFunc, typename ReturnType>
-ReturnType Fractal<ElemType, ChildNum>::apply(ApplyFunc apply_func) {
-        
-    if (root == nullptr) {
-        std::cerr << "Fractal::apply(): error: cannot apply the specified function to the NULL fractal root";
-        std::exit(EXIT_FAILURE);
-    }
-   
-    return root->template apply<ApplyFunc,ReturnType>(apply_func);
-}
+class FractalElement;
 
-template <typename ElemType, int ChildNum>
-template <typename WalkFunc, typename ReturnType>
-ReturnType Fractal<ElemType,ChildNum>::walk(WalkFunc walk_func) {
-        
-    if (root == nullptr) {
-        std::cerr << "Fractal::walk(): error: cannot apply the specified function to the NULL fractal root";
-        std::exit(EXIT_FAILURE);
-    }
-   
-    return root->template walk<WalkFunc,ReturnType>(walk_func);
-}
-
-template <typename ElemType, int ChildNum>
-template <typename GrowthFuncType, typename GrowthSeedType, typename NextGrowthSeedFuncType, typename GrowthStopFuncType>
-FractalElement<ElemType,ChildNum>::FractalElement(const FractalElementInfo& elem_info,
-                                                  Fractal_t* fractal,
-                                                  int fractal_depth,
-                                                  FractalElement_t* elem_parent,
-                                                  GrowthFuncType growth_func,
-                                                  GrowthSeedType growth_func_param,
-                                                  NextGrowthSeedFuncType next_growth_seed_func,
-                                                  GrowthStopFuncType growth_stop_func)
-    : info(elem_info), fractal(fractal), parent(elem_parent)
-{
-    elem = allocate_element();
+class FractalElementInfo {
     
-    if ((info.level > 0) && 
-        !(growth_stop_func(info, growth_func_param))) {
-        
-        if (info.depth == 0) {
-            // parallelize children creation
-            std::vector<FractalElement_t*> tmp(info.children_num);
-            int threads_count = (info.children_num <= 4) ? info.children_num : 4;
+    public:
 
-            #pragma omp parallel num_threads(threads_count)
-            {
-                #pragma omp for
-                for (int i = 0; i < info.children_num; i++) {
-                    
-                    int tid = omp_get_thread_num();
-                    printf("Build omp_thread=%d\n", tid);
+        FractalElementInfo(int elem_level=-1, int elem_depth=-1, int elem_label=-1, int elem_children_num=-1)
+            : level(elem_level), depth(elem_depth), children_num(elem_children_num) {}
 
-                    FractalElementInfo child_info;
-                    child_info.level = info.level-1;
-                    child_info.depth = info.depth+1;
-                    child_info.children_num = info.children_num;
-
-                    GrowthSeedType child_growth_seed;
-                    next_growth_seed_func(growth_func_param, child_growth_seed, i);
-
-                    tmp[i] = new FractalElement<ElemType,ChildNum>(child_info,
-                                                                   fractal,
-                                                                   fractal_depth,
-                                                                   this,
-                                                                   growth_func,
-                                                                   child_growth_seed,
-                                                                   next_growth_seed_func,
-                                                                   growth_stop_func);
-                }
-            }
-            
-            for (int i = 0; i < info.children_num; i++) {
-                children.add(tmp[i]);
-            }
-        } else {
-            // not enough granularity for parallelization
-            for (int i = 0; i < info.children_num; i++) {
-                
-                FractalElementInfo child_info;
-                child_info.level = info.level-1;
-                child_info.depth = info.depth+1;
-                child_info.children_num = info.children_num;
-
-                GrowthSeedType child_growth_seed;
-                next_growth_seed_func(growth_func_param, child_growth_seed, i);
-                
-                children.add(new FractalElement<ElemType,ChildNum>(child_info,
-                                                                   fractal,
-                                                                   fractal_depth,
-                                                                   this,
-                                                                   growth_func,
-                                                                   child_growth_seed,
-                                                                   next_growth_seed_func,
-                                                                   growth_stop_func)
-                            );
+        void check() const {
+            if (level == 0) {
+                std::cerr << "FractalElementInfo::check(): error: cannot operate at the 0 level";
+                std::exit(EXIT_FAILURE);
             }
         }
-    }
-    
-    growth_func(elem, info, growth_func_param);
-}
+
+        int level;
+        int depth;
+        int children_num;
+};
 
 template <typename ElemType, int ChildNum>
-FractalElement<ElemType,ChildNum>::~FractalElement() {
-    
-    delete elem;
+class Fractal {
 
-    if (!children.empty()) {
-        for (int i = 0; i < info.children_num; i++) {
-            delete children[i];
+    public:
+        
+        using Fractal_t = Fractal<ElemType,ChildNum>;
+
+        Fractal() 
+            : root(nullptr) 
+        {
+            children_num = ChildNum;
         }
-    }
-}
+        
+        ~Fractal() {
+            delete root;
+        }
+
+        // Fractal grow method
+        template <typename GrowthFuncType, // function to grow and fill fractal elements 
+                  typename GrowthSeedType, // data to use for elements growth and filling 
+                  typename NextGrowthSeedFuncType, // transformation of data from element to element 
+                  typename GrowthStopFuncType> // growth stop condition
+        void grow(int depth, 
+                  GrowthFuncType growth_func, 
+                  GrowthSeedType growth_seed, 
+                  NextGrowthSeedFuncType next_growth_seed_func,
+                  GrowthStopFuncType growth_stop_func);
+               
+        template <typename ApplyFunc,typename ReturnType>
+        ReturnType apply(ApplyFunc apply_func);
+
+        template <typename WalkFunc,typename ReturnType>
+        ReturnType walk(WalkFunc apply_func);
+
+    private:
+
+        // Fractal's root element
+        FractalElement<ElemType,ChildNum>* root; 
+
+        // Fractal's structural information
+        int children_num;
+        int top_level;
+        int depth;
+};
 
 template <typename ElemType, int ChildNum>
-template <typename ApplyFunc, typename ReturnType>
-ReturnType FractalElement<ElemType,ChildNum>::apply(ApplyFunc apply_func) {
+class FractalElement {
+
+    public:
+
+        using Fractal_t = Fractal<ElemType,ChildNum>;
+        using FractalElement_t = FractalElement<ElemType,ChildNum>;
+
+        template <typename GrowthFuncType, 
+                  typename GrowthSeedType, 
+                  typename NextGrowthSeedFuncType, 
+                  typename GrowthStopFuncType>
+        explicit FractalElement(const FractalElementInfo& elem_info,
+                                Fractal_t* fractal,
+                                int fractal_depth,
+                                FractalElement_t* elem_parent,
+                                GrowthFuncType growth_func,
+                                GrowthSeedType growth_func_param,
+                                NextGrowthSeedFuncType next_growth_seed_func,
+                                GrowthStopFuncType growth_stop_func);
+        ~FractalElement();
+
+        template <typename ApplyFunc,typename ReturnType>
+        ReturnType apply(ApplyFunc apply_func);
+
+        template <typename WalkFunc,typename ReturnType>
+        ReturnType walk(WalkFunc walk_func);
+
+        FractalElement_t* get_parent_ptr() { return parent; }
+        FractalElement_t* get_child_ptr(int i) { return children[i]; }
         
-    if (elem == nullptr) {
-        std::cerr << "Fractal::apply(): error: cannot apply the specified function to the NULL fractal element";
-        std::exit(EXIT_FAILURE);
-    }
-    
-    std::vector<ReturnType> ret_vals;
+        ElemType* get_elem_data() { return elem; }
 
-    if (!children.empty()) {
-        if (info.depth < 1) {
-            // parallelize 
-            std::vector<ReturnType> tmp(info.children_num);
-            int threads_count = (info.children_num <= 4) ? info.children_num : 4;
+        bool has_children() { return !children.empty(); }
 
-            #pragma omp parallel num_threads(threads_count)
-            {
-                #pragma omp for
-                for (int i = 0; i < info.children_num; i++) {
-
-                    int tid = omp_get_thread_num();
-                    printf("Apply omp_thread=%d\n", tid);
-
-                    tmp[i] = children[i]->template apply<ApplyFunc,ReturnType>(apply_func);
-                }
-            }
-
-            for (int i = 0; i < info.children_num; i++) {
-                ret_vals.push_back(tmp[i]);
-            }
-        } else {
-            for (int i = 0; i < info.children_num; i++) {
-                ret_vals.push_back(children[i]->template apply<ApplyFunc,ReturnType>(apply_func));
-            }
+    private:
+        
+        ElemType* allocate_element() {
+            return new ElemType;   
         }
-    }
+
+    private:
+
+        // Fractal the element belongs to
+        Fractal_t* fractal;
         
-    return apply_func(elem, ret_vals);
-}
+        // structural links with parent and children fractal elements
+        FractalElement_t* parent;
+        Sequence<FractalElement_t*> children;
 
-template <typename ElemType, int ChildNum>
-template <typename WalkFunc, typename ReturnType>
-ReturnType FractalElement<ElemType,ChildNum>::walk(WalkFunc walk_func) {
-        
-    if (elem == nullptr) {
-        std::cerr << "Fractal::walk(): error: cannot apply the specified function to the NULL fractal element";
-        std::exit(EXIT_FAILURE);
-    }
-    
-    std::vector<ReturnType> ret_vals;
+        // element information
+        FractalElementInfo info;
 
-    if (!children.empty()) {
-        if (info.depth < 1) {
-            // parallelize 
-            std::vector<ReturnType> tmp(info.children_num);
-            int threads_count = (info.children_num <= 4) ? info.children_num : 4;
+        // satellite fractal element data
+        ElemType* elem;
+};
 
-            #pragma omp parallel num_threads(threads_count)
-            {
-                #pragma omp for
-                for (int i = 0; i < info.children_num; i++) {
+#include "Fractal.tpp"
 
-                    int tid = omp_get_thread_num();
-                    printf("Walk omp_thread=%d\n", tid);
+} // namespace abstract
 
-                    tmp[i] = children[i]->template walk<WalkFunc,ReturnType>(walk_func);
-                }
-            }
-
-            for (int i = 0; i < info.children_num; i++) {
-                ret_vals.push_back(tmp[i]);
-            }
-
-        } else {
-            for (int i = 0; i < info.children_num; i++) {
-                ret_vals.push_back(children[i]->template walk<WalkFunc,ReturnType>(walk_func));
-            }
-        }
-    }
-
-    return walk_func(this, ret_vals);
-}
-
-// end
+#endif // #ifndef FRACTAL_H

@@ -11,6 +11,31 @@ Fractal<ElemType,SeedType,Arity>::Element::Element(const ElementInfo& elem_info)
     : info(elem_info), fractal(nullptr), parent(nullptr), children() {} 
 
 template <typename ElemType, typename SeedType, int Arity>
+Fractal<ElemType,SeedType,Arity>& Fractal<ElemType,SeedType,Arity>::grow(int depth) 
+{
+    this->top_level = depth;
+    this->depth = depth;
+   
+    if (this->depth >= 0) {
+        // root element of the fractal tree to be created
+        ElementInfo info;
+        info.level = this->top_level;
+        info.depth = 0;
+
+        if (type == Type::unbalanced) {
+            root = grow_unbalanced(info);
+        } else if (type == Type::balanced) {
+            grow_balanced(info);
+        } else {
+            std::cerr << "Fractal::grow():error: correct fractal type has not been specified!";
+            std::exit(EXIT_FAILURE);
+        }
+    }
+    
+    return *this;
+}
+
+template <typename ElemType, typename SeedType, int Arity>
 Fractal<ElemType,SeedType,Arity>& Fractal<ElemType,SeedType,Arity>::grow(int depth, SeedType seed) 
 {
     this->top_level = depth;
@@ -32,6 +57,50 @@ Fractal<ElemType,SeedType,Arity>& Fractal<ElemType,SeedType,Arity>::grow(int dep
         }
     }
     return *this;
+}
+
+template <typename ElemType, typename SeedType, int Arity>
+std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<ElemType,SeedType,Arity>::grow_unbalanced(ElementInfo info) 
+{
+    if (info.level >= 0) {
+        
+        //
+        // CREATE THE ROOT ELEMENT OF THE FRACTAL SUBTREE
+        //
+        // allocate memory for the root of the fractal subtree 
+        std::unique_ptr<Element> root_elem(new ElemType(info));
+        // set fractal the element belongs to
+        root_elem->set_fractal(this);
+        // grow the root element
+        root_elem->grow();
+        
+        // 
+        // GROW CHILD SUBTREES
+        // 
+        
+        // 
+        if ( (info.level-1 >= 0) && 
+             (!root_elem->growth_stop_condition()) ) 
+        {
+            for (int child_id = 0; child_id < Arity; child_id++) {
+                // root element of the subtree to be created
+                // element structural info
+                ElementInfo child_info;
+                child_info.level = info.level-1;
+                child_info.depth = info.depth+1;
+                
+                std::unique_ptr<Element> child_elem = std::move(grow_unbalanced(child_info));
+                child_elem->set_parent_element(root_elem.get());
+
+                root_elem->children.push_back(std::move(child_elem));
+            }
+        }
+        
+        return root_elem;
+    
+    } else {
+        return std::unique_ptr<Element>(nullptr);
+    }
 }
 
 template <typename ElemType, typename SeedType, int Arity>
@@ -78,6 +147,13 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
     } else {
         return std::unique_ptr<Element>(nullptr);
     }
+}
+
+template <typename ElemType, typename SeedType, int Arity>
+void Fractal<ElemType,SeedType,Arity>::grow_balanced(ElementInfo info) 
+{
+    // TODO: implement balanced growth method
+    return;
 }
 
 template <typename ElemType, typename SeedType, int Arity>
@@ -138,8 +214,8 @@ ComputeType Fractal<ElemType,SeedType,Arity>::Element::compute(ComputeFunction<C
                         #pragma omp for
                         for (int i = 0; i < info.children_num; i++) {
 
-                            int tid = omp_get_thread_num();
-                            printf("Apply omp_thread=%d\n", tid);
+                            //int tid = omp_get_thread_num();
+                            //printf("Apply omp_thread=%d\n", tid);
 
                             tmp[i] = children[i]->template compute<ComputeType>(compute_func);
                         }

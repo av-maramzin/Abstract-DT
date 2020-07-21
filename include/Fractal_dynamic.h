@@ -71,6 +71,7 @@ class Fractal {
         void set_impl_type(ImplType t) { impl_type = t; }
         ImplType get_impl_type() const { return impl_type; }
 
+        Fractal_t& grow(int depth);
         Fractal_t& grow(int depth, SeedType seed);
 
         template <typename ComputeType>
@@ -94,6 +95,9 @@ class Fractal {
         // (implement grow() method)
         std::unique_ptr<Element> grow_unbalanced(SeedType seed, ElementInfo info);
         void grow_balanced(SeedType seed, ElementInfo info);
+
+        std::unique_ptr<Element> grow_unbalanced(ElementInfo info);
+        void grow_balanced(ElementInfo info);
 
     private:
 
@@ -149,7 +153,8 @@ class Fractal<ElemType,SeedType,Arity>::Element {
         Element(const ElementInfo& info);
         virtual ~Element() {}
 
-        virtual void grow(Seed_t seed) = 0;
+        virtual void grow() {}
+        virtual void grow(Seed_t seed) {}
         virtual bool growth_stop_condition() { return false; }; // no growth stop condition by default
         virtual Seed_t spawn_child_seed(int child_id) {
             Seed_t ret;
