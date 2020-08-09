@@ -95,7 +95,9 @@ ComputeType Reduce<ElemType,SeedType,InjectType>::compute(Reduce<ElemType,SeedTy
         }
     } else if (this->get_impl_type() == ImplType::parallel) {
         size_t i;
-        #pragma omp parallel for private(i) shared(rets,elements)
+        int threads_count = (width <= 4) ? width : 4;
+
+        #pragma omp parallel for private(i) shared(rets,elements) num_threads(threads_count)
         for (i=0; i<width; i++) {
             rets[i] = compute_func((ElemType&)*static_cast<ElemType*>(elements[i].get()));
         }

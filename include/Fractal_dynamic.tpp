@@ -46,6 +46,7 @@ Fractal<ElemType,SeedType,Arity>& Fractal<ElemType,SeedType,Arity>::grow(int dep
         ElementInfo info;
         info.level = this->top_level;
         info.depth = 0;
+        info.index = 0;
 
         if (type == Type::unbalanced) {
             root = grow_unbalanced(seed, info);
@@ -88,6 +89,7 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                 ElementInfo child_info;
                 child_info.level = info.level-1;
                 child_info.depth = info.depth+1;
+                child_info.index = child_id;
                 
                 std::unique_ptr<Element> child_elem = std::move(grow_unbalanced(child_info));
                 child_elem->set_parent_element(root_elem.get());
@@ -115,6 +117,8 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
         std::unique_ptr<Element> root_elem(new ElemType(info));
         // set fractal the element belongs to
         root_elem->set_fractal(this);
+        // plant the seed
+        root_elem->plant_seed(seed);
         // grow the root element
         root_elem->grow(seed);
         
@@ -132,6 +136,7 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                 ElementInfo child_info;
                 child_info.level = info.level-1;
                 child_info.depth = info.depth+1;
+                child_info.index = child_id;
                 // seed to grow the child element
                 SeedType child_seed = root_elem->spawn_child_seed(child_id);
                 
@@ -202,7 +207,8 @@ ComputeType Fractal<ElemType,SeedType,Arity>::Element::compute(ComputeFunction<C
         
         std::vector<ComputeType> ret_vals;
         
-        if (!children.empty()) {
+        if ( !children.empty() &&
+             (this->element_info().level != 0) ) { 
             if (fractal->get_impl_type() == Fractal_t::ImplType::parallel) {
                 if (info.depth < 1) {
                     // parallelize 

@@ -134,7 +134,7 @@ class FractalElement {
         ElemType* elem;
 };
 
-#include "Fractal.tpp"
+#include "Fractal_static.tpp"
 
 } // namespace abstract
 

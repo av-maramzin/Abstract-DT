@@ -164,9 +164,17 @@ class Fractal<ElemType,SeedType,Arity>::Element {
         template <typename ComputeType>
         ComputeType compute(ComputeFunction<ComputeType>& func);
 
+        const ElementInfo& element_info() const { return info; }
+   
+        Element* get_parent_ptr() { return parent; }
+        Element* get_child_ptr(int i) { return children[i].get(); }
+        
+        bool has_children() { return !children.empty(); }
+
     protected:
 
-        const ElementInfo& element_info() const { return info; }
+        void plant_seed(SeedType s) { seed = s; }
+        SeedType get_seed() const { return seed; }
 
     private:
 
@@ -186,6 +194,8 @@ class Fractal<ElemType,SeedType,Arity>::Element {
 
     private:
 
+        // seed used to grow the element
+        SeedType seed;
         // structural information
         ElementInfo info;
         // fractal the element belongs to
