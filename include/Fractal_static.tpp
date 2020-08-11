@@ -9,7 +9,7 @@ void Fractal<ElemType,ChildNum>::grow(int depth,
                                         NextGrowthSeedFuncType next_growth_seed_func,
                                         GrowthStopFuncType growth_stop_func)
 {
-    this->top_level = depth;
+    this->top_level = depth+1;
     this->depth = depth;
    
     // root element to be created
@@ -68,7 +68,7 @@ FractalElement<ElemType,ChildNum>::FractalElement(const FractalElementInfo& elem
 {
     elem = allocate_element();
     
-    if ((info.level > 0) && 
+    if ((info.level-1 > 0) && 
         !(growth_stop_func(info, growth_func_param))) {
         
         if (info.depth == 0) {
@@ -82,7 +82,7 @@ FractalElement<ElemType,ChildNum>::FractalElement(const FractalElementInfo& elem
                 for (int i = 0; i < info.children_num; i++) {
                     
                     int tid = omp_get_thread_num();
-                    printf("Build omp_thread=%d\n", tid);
+                    //printf("Build omp_thread=%d\n", tid);
 
                     FractalElementInfo child_info;
                     child_info.level = info.level-1;
@@ -157,7 +157,8 @@ ReturnType FractalElement<ElemType,ChildNum>::apply(ApplyFunc apply_func) {
     
     std::vector<ReturnType> ret_vals;
 
-    if (!children.empty()) {
+    if ( !children.empty() && 
+         (info.level-1 > 0) ) {
         if (info.depth < 1) {
             // parallelize 
             std::vector<ReturnType> tmp(info.children_num);
@@ -169,7 +170,7 @@ ReturnType FractalElement<ElemType,ChildNum>::apply(ApplyFunc apply_func) {
                 for (int i = 0; i < info.children_num; i++) {
 
                     int tid = omp_get_thread_num();
-                    printf("Apply omp_thread=%d\n", tid);
+                    //printf("Apply omp_thread=%d\n", tid);
 
                     tmp[i] = children[i]->template apply<ApplyFunc,ReturnType>(apply_func);
                 }
@@ -199,7 +200,8 @@ ReturnType FractalElement<ElemType,ChildNum>::walk(WalkFunc walk_func) {
     
     std::vector<ReturnType> ret_vals;
 
-    if (!children.empty()) {
+    if ( !children.empty() && 
+         (info.level-1 > 0) ) {
         if (info.depth < 1) {
             // parallelize 
             std::vector<ReturnType> tmp(info.children_num);
@@ -211,7 +213,7 @@ ReturnType FractalElement<ElemType,ChildNum>::walk(WalkFunc walk_func) {
                 for (int i = 0; i < info.children_num; i++) {
 
                     int tid = omp_get_thread_num();
-                    printf("Walk omp_thread=%d\n", tid);
+                    //printf("Walk omp_thread=%d\n", tid);
 
                     tmp[i] = children[i]->template walk<WalkFunc,ReturnType>(walk_func);
                 }

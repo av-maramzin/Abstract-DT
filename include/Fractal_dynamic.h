@@ -171,17 +171,10 @@ class Fractal<ElemType,SeedType,Arity>::Element {
         
         bool has_children() { return !children.empty(); }
 
-    protected:
-
-        void plant_seed(SeedType s) { seed = s; }
-        SeedType get_seed() const { return seed; }
-
-    private:
-
-        // specify the fractal this element belongs to
-        void set_fractal(Fractal* f) { fractal = f; }
-        // link the element with its parent element
-        void set_parent_element(Element* p) { parent = p; }
+        // query fractal related information
+        Fractal* get_fractal() {
+            return fractal; 
+        }
 
         // query the types of the fractal this element belongs to
         Type get_fractal_type() const { 
@@ -191,6 +184,19 @@ class Fractal<ElemType,SeedType,Arity>::Element {
         ImplType get_fractal_impl_type() const {
             return (fractal != nullptr) ? fractal->get_impl_type() : ImplType::sequential;
         }
+        
+        SeedType get_seed() const { return seed; }
+
+    protected:
+
+        void plant_seed(SeedType s) { seed = s; }
+
+    private:
+
+        // specify the fractal this element belongs to
+        void set_fractal(Fractal* f) { fractal = f; }
+        // link the element with its parent element
+        void set_parent_element(Element* p) { parent = p; }
 
     private:
 
