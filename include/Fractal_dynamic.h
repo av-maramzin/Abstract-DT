@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <memory>
+#include <cmath>
 #include <iostream>
 #include <omp.h>
 
@@ -77,10 +78,63 @@ class Fractal {
         template <typename ComputeType>
         ComputeType compute(ComputeFunction<ComputeType>& func);
        
-        // helper functions
-        //size_t get_elements_num(int depth);
-        //int index_to_depth(int index);0
-    
+        // HELPER FUNCTIONS
+        
+        // the number of elements 
+        // at the specified depth
+        size_t depth_elements_num(int depth) {
+            return std::pow(Arity,depth);    
+        }
+
+        size_t level_elements_num(int lvl) {
+            return std::pow(Arity,top_level-lvl);    
+        }
+
+        // the number of elements 
+        // in the whole fractal
+        size_t fractal_elements_num() {
+            return (std::pow(Arity,top_level)-1)/(Arity-1);
+        }
+        
+        // index of the first child 
+        size_t first_child(int parent_index) {
+            return Arity*parent_index+1;
+        }
+
+        // index of the last child 
+        size_t last_child(int parent_index) {
+            return Arity*parent_index+Arity;
+        }
+
+        // index of the child 
+        size_t child_index(int parent_index, int child_id) {
+            return Arity*parent_index+child_id;
+        }
+
+        int index_to_depth(int index) {
+            return std::log(index)/std::log(Arity)+1;
+        }
+ 
+        int index_to_level(int index) {
+            return top_level-index_to_depth(index);
+        }
+
+        size_t level_start_index(int level) {
+            return std::pow(Arity,top_level-level)-1;
+        }
+
+        size_t level_end_index(int level) {
+            return std::pow(Arity,top_level-level+1)-1;
+        }
+
+        size_t depth_start_index(int depth) {
+            return std::pow(Arity,depth)-1;
+        }
+ 
+        size_t depth_end_index(int depth) {
+            return std::pow(Arity,depth+1)-1;
+        }
+
     private:
         
         // private framework computation methods
@@ -101,18 +155,26 @@ class Fractal {
 
     private:
 
+        // refine the type of the fractal
+        // for optimization purposes
         Type type;
         ImplType impl_type;
-        
+
+        // fractal parameters
+        // will be set after the grow()
+        // method has been called
         int depth;
         int top_level;
-        
+        size_t elements_num;
+        size_t leaves_num;
+
         // unbalanced fractal implementation 
-        // a pointer to the root element
+        // a pointer to the root element as 
+        // the starting point
         std::unique_ptr<Element> root;
         
         // balanced fractal implementation
-        // an array of fractal tree elements
+        // an array of mapped fractal tree elements
         // laid out linearly in memory
         std::vector<std::unique_ptr<Element>> elements;
 };
@@ -138,7 +200,8 @@ struct Fractal<ElemType,SeedType,Arity>::ElementInfo {
 
         int depth;
         int level;
-        int index;
+        int child_id; // [0 .. Arity-1]
+        int index; // [0 .. n]
         static const int children_num = Arity;
 };
 
