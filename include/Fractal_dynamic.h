@@ -79,7 +79,14 @@ class Fractal {
         ComputeType compute(ComputeFunction<ComputeType>& func);
        
         // HELPER FUNCTIONS
-        
+
+        // sum of i first members of the 
+        // geometric progression 
+        // [ 0 Arity^0 Arity^1 ... ]
+        int geo_sum(int i) {
+            return (std::pow(Arity,i)-1)/(Arity-1);
+        }
+
         // the number of elements 
         // at the specified depth
         size_t depth_elements_num(int depth) {
@@ -93,7 +100,11 @@ class Fractal {
         // the number of elements 
         // in the whole fractal
         size_t fractal_elements_num() {
-            return (std::pow(Arity,top_level)-1)/(Arity-1);
+            if (!geo_progression.empty()) {
+                return geo_progression[top_level];
+            } else {
+                return (std::pow(Arity,top_level)-1)/(Arity-1);
+            }
         }
         
         // index of the first child 
@@ -112,27 +123,30 @@ class Fractal {
         }
 
         int index_to_depth(int index) {
-            return std::log(index)/std::log(Arity)+1;
+            for (int i=1; i<geo_progression.size(); i++) {
+                if (index < geo_progression[i]) return i-1;
+            }
+            return -1;
         }
  
         int index_to_level(int index) {
-            return top_level-index_to_depth(index);
+            return top_level-index_to_depth(index); 
         }
 
-        size_t level_start_index(int level) {
-            return std::pow(Arity,top_level-level)-1;
+        int level_start_index(int lvl) {
+            return depth_start_index(top_level-lvl);
         }
 
-        size_t level_end_index(int level) {
-            return std::pow(Arity,top_level-level+1)-1;
+        int level_end_index(int lvl) {
+            return depth_end_index(top_level-lvl);
         }
 
-        size_t depth_start_index(int depth) {
-            return std::pow(Arity,depth)-1;
+        int depth_start_index(int d) {
+            return geo_progression[d];
         }
  
-        size_t depth_end_index(int depth) {
-            return std::pow(Arity,depth+1)-1;
+        int depth_end_index(int d) {
+            return geo_progression[d+1]-1;
         }
 
     private:
@@ -177,6 +191,14 @@ class Fractal {
         // an array of mapped fractal tree elements
         // laid out linearly in memory
         std::vector<std::unique_ptr<Element>> elements;
+        
+        // sum of i first members of the 
+        // geometric progression 
+        // [ 0 Arity^0 Arity^1 ... ]
+        //
+        // s_{n-1} = (Arity^n-1)/(Arity-1)
+        //
+        std::vector<int> geo_progression;
 };
 
 template <typename ElemType, typename SeedType, int Arity> 

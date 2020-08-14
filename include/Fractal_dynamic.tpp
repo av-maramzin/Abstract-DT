@@ -20,6 +20,13 @@ Fractal<ElemType,SeedType,Arity>& Fractal<ElemType,SeedType,Arity>::grow(int dep
 
     this->top_level = depth+1;
     this->depth = depth;
+    
+    // precompute the geometric progression 
+    // of level sizes 
+    for (int i=0; i<=this->top_level; i++) {
+        geo_progression.push_back(geo_sum(i));
+    }
+    
     this->elements_num = fractal_elements_num();
     this->leaves_num = depth_elements_num(depth);
 
@@ -54,6 +61,13 @@ Fractal<ElemType,SeedType,Arity>& Fractal<ElemType,SeedType,Arity>::grow(int dep
 
     this->top_level = depth+1;
     this->depth = depth;
+    
+    // precompute the geometric progression 
+    // of level sizes 
+    for (int i=0; i<=this->top_level; i++) {
+        geo_progression.push_back(geo_sum(i));
+    }
+    
     this->elements_num = fractal_elements_num();
     this->leaves_num = depth_elements_num(depth);
 
@@ -116,7 +130,7 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                             child_info.level = info.level-1;
                             child_info.depth = info.depth+1;
                             child_info.child_id = child_id;
-                            child_info.index = child_index(info.index,child_id);
+                            child_info.index = child_index(info.index,child_id+1);
                             
                             std::unique_ptr<Element>& child_elem = tmp[child_id];
                             child_elem = std::move(grow_unbalanced(child_info));
@@ -136,7 +150,7 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                         child_info.level = info.level-1;
                         child_info.depth = info.depth+1;
                         child_info.child_id = child_id;
-                        child_info.index = child_index(info.index,child_id);
+                        child_info.index = child_index(info.index,child_id+1);
                         
                         std::unique_ptr<Element> child_elem = std::move(grow_unbalanced(child_info));
                         child_elem->set_parent_element(root_elem.get());
@@ -152,7 +166,7 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                     child_info.level = info.level-1;
                     child_info.depth = info.depth+1;
                     child_info.child_id = child_id;
-                    child_info.index = child_index(info.index,child_id);
+                    child_info.index = child_index(info.index,child_id+1);
                     
                     std::unique_ptr<Element> child_elem = std::move(grow_unbalanced(child_info));
                     child_elem->set_parent_element(root_elem.get());
@@ -209,7 +223,7 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                             ElementInfo child_info;
                             child_info.level = info.level-1;
                             child_info.depth = info.depth+1;
-                            child_info.index = child_index(info.index,child_id);
+                            child_info.index = child_index(info.index,child_id+1);
                             child_info.child_id = child_id;
 
                             // seed to grow the child element
@@ -233,7 +247,7 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                         child_info.level = info.level-1;
                         child_info.depth = info.depth+1;
                         child_info.child_id = child_id;
-                        child_info.index = child_index(info.index,child_id);
+                        child_info.index = child_index(info.index,child_id+1);
                         
                         // seed to grow the child element
                         SeedType child_seed = root_elem->spawn_child_seed(child_id);
@@ -252,7 +266,7 @@ std::unique_ptr<typename Fractal<ElemType,SeedType,Arity>::Element> Fractal<Elem
                     child_info.level = info.level-1;
                     child_info.depth = info.depth+1;
                     child_info.child_id = child_id;
-                    child_info.index = child_index(info.index,child_id);
+                    child_info.index = child_index(info.index,child_id+1);
                     
                     // seed to grow the child element
                     SeedType child_seed = root_elem->spawn_child_seed(child_id);
@@ -301,7 +315,8 @@ void Fractal<ElemType,SeedType,Arity>::grow_balanced(SeedType seed, ElementInfo 
         
         if (get_impl_type() == ImplType::parallel) {
 
-            int threads_count = (info.children_num <= 4) ? info.children_num : 4;
+            int max_threads = omp_get_max_threads();
+            int threads_count = (Arity <= max_threads) ? Arity : max_threads;
 
             #pragma omp parallel for num_threads(threads_count) shared(elements)
             for (int j = first_child(i); j <= last_child(i); j++) {
@@ -383,7 +398,11 @@ void Fractal<ElemType,SeedType,Arity>::grow_balanced(ElementInfo info)
         // grow all its children
         
         if (get_impl_type() == ImplType::parallel) {
-            #pragma omp parallel for shared(elements,i)
+
+            int max_threads = omp_get_max_threads();
+            int threads_count = (Arity <= max_threads) ? Arity : max_threads;
+
+            #pragma omp parallel for num_threads(threads_count) shared(elements)
             for (int j = first_child(i); j <= last_child(i); j++) {
                 ElementInfo child_info;
                 child_info.level = index_to_level(j);
@@ -467,22 +486,22 @@ ComputeType Fractal<ElemType,SeedType,Arity>::compute_balanced(ComputeFunction<C
         int threads_count;
         
         // precompute leaves
-        std::vector<ComputeType> leaf_ret_vals;
         
         threads_count = (leaves_num < max_threads) ? leaves_num : max_threads;
 
-        #pragma omp parallel for num_threads(threads_count) shared(computed_rets,leaf_ret_vals)
+        #pragma omp parallel for num_threads(threads_count) shared(elements,computed_rets)
         for (int i = elements_num-1; i >= elements_num-leaves_num; i--) {
+            std::vector<ComputeType> leaf_ret_vals;
             computed_rets[i] = compute_func(*(static_cast<ElemType*>(elements[i].get())), leaf_ret_vals);
         }
 
-        std::vector<ComputeType> ret_vals(Arity);
-        for (int lvl = 1; lvl <= this->top_level; lvl++) {
+        for (int lvl = 2; lvl <= this->top_level; lvl++) {
             
             threads_count = (level_elements_num(lvl) < max_threads) ? level_elements_num(lvl) : max_threads;
 
-            #pragma omp parallel for num_threads(threads_count) shared(computed_rets,ret_vals)
+            #pragma omp parallel for num_threads(threads_count) shared(elements,computed_rets,lvl)
             for (int i = level_start_index(lvl); i <= level_end_index(lvl); i++) {
+                std::vector<ComputeType> ret_vals(Arity);
                 // get child computation results 
                 for (int j = first_child(i); j <= last_child(i); j++) {
                     ret_vals[j-first_child(i)] = computed_rets[j];
@@ -498,8 +517,8 @@ ComputeType Fractal<ElemType,SeedType,Arity>::compute_balanced(ComputeFunction<C
             computed_rets[i] = compute_func(*(static_cast<ElemType*>(elements[i].get())), leaf_ret_vals);
         }
 
-        std::vector<ComputeType> ret_vals(Arity);
         for (int i = elements_num-leaves_num-1; i >= 0; i--) {
+            std::vector<ComputeType> ret_vals(Arity);
             // get child computation results 
             for (int j = first_child(i); j <= last_child(i); j++) {
                 ret_vals[j-first_child(i)] = computed_rets[j];
