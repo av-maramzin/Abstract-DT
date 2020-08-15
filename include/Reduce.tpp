@@ -24,17 +24,40 @@ Reduce<ElemType,SeedType,InjectType>& Reduce<ElemType,SeedType,InjectType>::grow
     // the vector container to hold all reduction elements
     //elements.reserve(width);
 
-    for (size_t i=0; i<width; i++) {
-        // position information 
-        ElementInfo info;
-        info.index = i;
-        // allocate memory and set the position
-        std::unique_ptr<Element> elem(new ElemType(info));
-        // grow custom part of the element
-        elem->grow();
-        // move the grown element into its position in the reduction
-        elements.push_back(std::move(elem));
+    if (this->get_impl_type() == ImplType::sequential) {
+        for (size_t i=0; i<width; i++) {
+            // position information 
+            ElementInfo info;
+            info.index = i;
+            // allocate memory and set the position
+            std::unique_ptr<Element> elem(new ElemType(info));
+            // grow custom part of the element
+            elem->grow();
+            // move the grown element into its position in the reduction
+            elements.push_back(std::move(elem));
+        }
+    } else if (this->get_impl_type() == ImplType::parallel) {
+        size_t i;
+        int max_threads = omp_get_max_threads();
+        int threads_count = (width <= max_threads) ? width : max_threads;
+
+        elements.resize(width);
+
+        #pragma omp parallel for private(i) shared(elements) num_threads(threads_count)
+        for (i=0; i<width; i++) {
+            // position information 
+            ElementInfo info;
+            info.index = i;
+            // allocate memory and set the position
+            std::unique_ptr<Element> elem(new ElemType(info));
+            // grow custom part of the element
+            elem->grow();
+            // move the grown element into its position in the reduction
+            elements[i] = std::move(elem);
+        }
     }
+
+    return *this;
 }
 
 template <typename ElemType, typename SeedType, typename InjectType>
@@ -45,24 +68,58 @@ Reduce<ElemType,SeedType,InjectType>& Reduce<ElemType,SeedType,InjectType>::grow
     // the vector container to hold all reduction elements
     //elements.reserve(width);
 
-    for (size_t i=0; i<width; i++) {
-        // position information 
-        ElementInfo info;
-        info.index = i;
-        // allocate memory and set the position
-        std::unique_ptr<Element> elem(new ElemType(info));
-        // grow custom part of the element
-        elem->grow(seed);
-        // move the grown element into its position in the reduction
-        elements.push_back(std::move(elem));
+    if (this->get_impl_type() == ImplType::sequential) {
+        for (size_t i=0; i<width; i++) {
+            // position information 
+            ElementInfo info;
+            info.index = i;
+            // allocate memory and set the position
+            std::unique_ptr<Element> elem(new ElemType(info));
+            // grow custom part of the element
+            elem->grow(seed);
+            // move the grown element into its position in the reduction
+            elements.push_back(std::move(elem));
+        }
+    } else if (this->get_impl_type() == ImplType::parallel) {
+        size_t i;
+        int max_threads = omp_get_max_threads();
+        int threads_count = (width <= max_threads) ? width : max_threads;
+
+        elements.resize(width);
+
+        #pragma omp parallel for private(i) shared(elements,seed) num_threads(threads_count)
+        for (i=0; i<width; i++) {
+            // position information 
+            ElementInfo info;
+            info.index = i;
+            // allocate memory and set the position
+            std::unique_ptr<Element> elem(new ElemType(info));
+            // grow custom part of the element
+            elem->grow(seed);
+            // move the grown element into its position in the reduction
+            elements[i] = std::move(elem);
+        }
     }
+
+    return *this;
 }
 
 template <typename ElemType, typename SeedType, typename InjectType>
 Reduce<ElemType,SeedType,InjectType>& Reduce<ElemType,SeedType,InjectType>::inject(InjectType data) {
     // propagate the data to all reduce elements
-    for (size_t i=0; i<width; i++) {
-        elements[i]->inject(data);
+    if (this->get_impl_type() == ImplType::sequential) {
+        for (size_t i=0; i<width; i++) {
+            elements[i]->inject(data);
+        }
+    } else if (this->get_impl_type() == ImplType::parallel) {
+        size_t i;
+        int max_threads = omp_get_max_threads();
+        int threads_count = (width <= max_threads) ? width : max_threads;
+
+        #pragma omp parallel for private(i) shared(elements) num_threads(threads_count)
+        for (size_t i=0; i<width; i++) {
+            elements[i]->inject(data);
+        }
     }
 }
 
@@ -95,7 +152,8 @@ ComputeType Reduce<ElemType,SeedType,InjectType>::compute(Reduce<ElemType,SeedTy
         }
     } else if (this->get_impl_type() == ImplType::parallel) {
         size_t i;
-        int threads_count = (width <= 4) ? width : 4;
+        int max_threads = omp_get_max_threads();
+        int threads_count = (width <= max_threads) ? width : max_threads;
 
         #pragma omp parallel for private(i) shared(rets,elements) num_threads(threads_count)
         for (i=0; i<width; i++) {

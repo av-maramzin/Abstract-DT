@@ -537,7 +537,8 @@ ComputeType Fractal<ElemType,SeedType,Arity>::Element::compute(ComputeFunction<C
     
     std::vector<ComputeType> ret_vals;
     
-    if (this->info.level-1 > 0) 
+    if (!children.empty() && 
+        (this->info.level-1 > 0) )
     { 
         if (fractal->get_impl_type() == Fractal_t::ImplType::parallel) {
             if (info.depth < 2) {
